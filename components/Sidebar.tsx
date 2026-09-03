@@ -38,7 +38,6 @@ const NAV_ITEMS = [
     // Sub-menu hiện khi đang trong nhóm /dashboard/tuyen-dung hoặc /dashboard/bc-thang
     children: [
       { label: 'BC Ngày',   href: '/dashboard/tuyen-dung' },
-      { label: 'BC Ngày',   href: '/dashboard/tuyen-dung' },
       { label: 'BC Tháng',  href: '/dashboard/bc-thang'   },
       { label: 'BC Tổng',   href: '/dashboard/bc-tong'    },
     ],
