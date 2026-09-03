@@ -2,81 +2,57 @@
 
 import { useState, useEffect, useCallback } from 'react'
 
-// ── Types ─────────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────
 interface TongQuan {
-  tongUVNhap: number
-  hopLeTho:   number
-  trungTho:   number
-  chuaCheck:  number
-  hlNet:      number
-  trungNet:   number
-  tongUVNet:  number
-  kyHDTotal:  number
-  kyHD:       number
-  duyet:      number
-  daoTao:     number
-  dauPV:      number
-  coLich:     number
-  baoLich:    number
-  chuaCo:     number
-  khac:       number
-  hlLan2:     number
-  trungLan2:  number
+  tongUVNhap: number; hopLeTho: number; trungTho: number; chuaCheck: number
+  hlNet: number; trungNet: number; tongUVNet: number; kyHDTotal: number
+  kyHD: number; duyet: number; daoTao: number; dauPV: number
+  coLich: number; baoLich: number; chuaCo: number; khac: number
+  hlLan2: number; trungLan2: number
 }
-
-interface PheuRow  { label: string; val: number }
-interface WeekRow  { week: number; label: string; hlNet: number }
-interface TTRow    { trangThai: string; soLuong: number }
-interface PLRow    { phanLoai:  string; soLuong: number }
+interface PheuRow      { label: string; val: number }
+interface WeekRow      { week: number; label: string; hlNet: number }
+interface TTRow        { trangThai: string; soLuong: number }
+interface PLRow        { phanLoai: string; soLuong: number }
+interface ThiTruongRow { label: string; uvNet: number; hlNet: number; trungNet: number; chuaCheck: number }
 
 interface BCThangData {
-  month:         number
-  year:          number
-  updatedAt:     string
-  empty:         boolean
-  message?:      string
-  tongQuan?:     TongQuan
-  pheu?:         PheuRow[]
-  weeklyHL?:     WeekRow[]
-  trangThaiList?: TTRow[]
-  phanLoaiList?:  PLRow[]
+  month: number; year: number; updatedAt: string; empty: boolean; message?: string
+  tongQuan?: TongQuan; pheu?: PheuRow[]; weeklyHL?: WeekRow[]
+  trangThaiList?: TTRow[]; phanLoaiList?: PLRow[]; byThiTruong?: ThiTruongRow[]
 }
 
-// ── Component ─────────────────────────────────────────────────────────
+// ── Helper ─────────────────────────────────────────────────────────────
+const pct = (a: number, b: number) => b > 0 ? ((a / b) * 100).toFixed(1) + '%' : '0%'
+const n   = (v: number) => (v ?? 0).toLocaleString()
+
 export default function BCThangPage() {
-  const now   = new Date()
-  const [month, setMonth] = useState(now.getMonth() + 1)
-  const [year,  setYear]  = useState(now.getFullYear())
-  const [data,  setData]  = useState<BCThangData | null>(null)
+  const now = new Date()
+  const [month,   setMonth]   = useState(now.getMonth() + 1)
+  const [year,    setYear]    = useState(now.getFullYear())
+  const [data,    setData]    = useState<BCThangData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
 
   const fetchData = useCallback(async () => {
-    setLoading(true)
-    setError('')
-    setData(null)
+    setLoading(true); setError(''); setData(null)
     try {
       const res = await fetch(`/api/reports/bc-thang?month=${month}&year=${year}`)
-      if (!res.ok) {
-        const e = await res.json()
-        throw new Error(e.error || `HTTP ${res.status}`)
-      }
-      const json = await res.json()
-      setData(json)
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`) }
+      setData(await res.json())
+    } catch (e: any) { setError(e.message) }
+    finally { setLoading(false) }
   }, [month, year])
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const tq = data?.tongQuan
+  const tq    = data?.tongQuan
+  const tyLe  = tq ? pct(tq.hlNet, tq.hlNet + tq.trungNet) : '—'
 
   return (
-    <div className="space-y-6">
-      {/* Tiêu đề + bộ lọc */}
+    <div className="space-y-5">
+
+      {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Báo Cáo Tháng — Tuyển Dụng</h1>
@@ -84,39 +60,25 @@ export default function BCThangPage() {
             <p className="text-xs text-slate-400 mt-0.5">Cập nhật: {data.updatedAt}</p>
           )}
         </div>
-
         <div className="flex items-center gap-2">
-          <select
-            value={month}
-            onChange={e => setMonth(Number(e.target.value))}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+          <select value={month} onChange={e => setMonth(Number(e.target.value))}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            {Array.from({length:12},(_,i)=>i+1).map(m=>(
               <option key={m} value={m}>Tháng {m}</option>
             ))}
           </select>
-
-          <select
-            value={year}
-            onChange={e => setYear(Number(e.target.value))}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {[2024, 2025, 2026, 2027].map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
+          <select value={year} onChange={e => setYear(Number(e.target.value))}
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            {[2024,2025,2026,2027].map(y=><option key={y} value={y}>{y}</option>)}
           </select>
-
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition"
-          >
+          <button onClick={fetchData} disabled={loading}
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition">
             {loading ? 'Đang tải...' : 'Xem'}
           </button>
         </div>
       </div>
 
-      {/* Trạng thái */}
+      {/* ── States ──────────────────────────────────────────────────── */}
       {loading && (
         <div className="flex items-center justify-center py-20 text-slate-400">
           <svg className="animate-spin w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24">
@@ -126,77 +88,95 @@ export default function BCThangPage() {
           Đang tải dữ liệu...
         </div>
       )}
-
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-red-700 text-sm">
-          ⚠️ {error}
-        </div>
+        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-red-700 text-sm">⚠️ {error}</div>
       )}
-
       {data?.empty && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-amber-700 text-sm">
-          📭 {data.message}
-        </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-amber-700 text-sm">📭 {data.message}</div>
       )}
 
-      {/* Bảng 1 — Tổng quan */}
       {tq && (
         <>
-          <Section title="Bảng 1 — Tổng quan">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              <StatCard label="Tổng UV Nhập"  value={tq.tongUVNhap}  color="blue" />
-              <StatCard label="Hợp Lệ Thô"    value={tq.hopLeTho}    color="green" />
-              <StatCard label="Trùng Thô"      value={tq.trungTho}    color="orange" />
-              <StatCard label="Chưa Check"     value={tq.chuaCheck}   color="slate" />
-              <StatCard label="HL Net"         value={tq.hlNet}       color="green" bold />
-              <StatCard label="Trùng Net"      value={tq.trungNet}    color="orange" bold />
-              <StatCard label="Tổng UV Net"    value={tq.tongUVNet}   color="blue" bold />
-              <StatCard label="Ký HĐ + Duyệt" value={tq.kyHDTotal}   color="purple" bold />
+          {/* ── Bảng 1 — Tổng quan tháng ──────────────────────────── */}
+          <Section title="BẢNG 1 — TỔNG QUAN THÁNG">
+
+            {/* Hàng 1: KPI chính */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <KpiCard label="Tổng UV Net"  value={n(tq.tongUVNet)} sub="HL Net + Trùng Net"                               bg="bg-blue-600"  />
+              <KpiCard label="Hợp Lệ Net"   value={n(tq.hlNet)}    sub={pct(tq.hlNet,tq.tongUVNet)+' / Net'}              bg="bg-green-700" />
+              <KpiCard label="Trùng Net"    value={n(tq.trungNet)}  sub={pct(tq.trungNet,tq.tongUVNet)+' / Net'}           bg="bg-red-700"   />
+              <KpiCard label="Tỷ Lệ HL"     value={tyLe}           sub="HL Net / (HL + Trùng)"                            bg="bg-orange-500" isText />
             </div>
 
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              <StatCard label="Ký HĐ"      value={tq.kyHD}    color="purple" />
-              <StatCard label="Duyệt"      value={tq.duyet}   color="purple" />
-              <StatCard label="Đào Tạo"    value={tq.daoTao}  color="indigo" />
-              <StatCard label="Đậu PV"     value={tq.dauPV}   color="indigo" />
-              <StatCard label="Có Lịch"    value={tq.coLich}  color="cyan" />
-              <StatCard label="Báo Lịch"   value={tq.baoLich} color="cyan" />
-              <StatCard label="Chưa Có"    value={tq.chuaCo}  color="slate" />
-              <StatCard label="Khác"       value={tq.khac}    color="slate" />
+            {/* Hàng 2: Lịch hẹn */}
+            <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <KpiCard label="Chưa Check"    value={n(tq.chuaCheck)} sub={pct(tq.chuaCheck,tq.tongUVNet)+' / Net'}        bg="bg-slate-500" />
+              <KpiCard label="Chưa Có Lịch" value={n(tq.chuaCo)}    sub={pct(tq.chuaCo,tq.hlNet)+' / HL Net'}            bg="bg-orange-500" />
+              <KpiCard label="Báo Lịch Sau" value={n(tq.baoLich)}   sub={pct(tq.baoLich,tq.hlNet)+' / HL Net'}           bg="bg-amber-500"  />
+              <KpiCard label="Có Lịch PV"   value={n(tq.coLich)}    sub={pct(tq.coLich,tq.hlNet)+' / HL Net'}            bg="bg-teal-600"   />
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <StatCard label="HL Lần 2 (loại)" value={tq.hlLan2}    color="red" />
-              <StatCard label="Trùng Lần 2 (loại)" value={tq.trungLan2} color="red" />
+            {/* Hàng 3: Phễu cuối */}
+            <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <KpiCard label="Đậu PV"  value={n(tq.dauPV)}  sub={pct(tq.dauPV,tq.hlNet)+' / HL Net'}   bg="bg-purple-700" />
+              <KpiCard label="Đào Tạo" value={n(tq.daoTao)} sub={pct(tq.daoTao,tq.hlNet)+' / HL Net'}  bg="bg-purple-600" />
+              <KpiCard label="Ký HĐ"   value={n(tq.kyHD)}   sub={pct(tq.kyHD,tq.hlNet)+' / HL Net'}    bg="bg-green-800"  />
+              <KpiCard label="Duyệt"   value={n(tq.duyet)}  sub={pct(tq.duyet,tq.hlNet)+' / HL Net'}   bg="bg-green-700"  />
+            </div>
+
+            {/* Hàng 4: Khác */}
+            <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <KpiCard label="Chỉ Số Khác" value={n(tq.khac)} sub={pct(tq.khac,tq.hlNet)+' / HL Net'} bg="bg-slate-600" />
+            </div>
+
+            {/* Thông tin bổ sung */}
+            <div className="mt-5 border-t border-slate-200 pt-4">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center mb-3">
+                — Thông tin bổ sung — Đối chiếu &amp; Tham khảo —
+              </p>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <KpiCard label="Tổng UV Nhập" value={n(tq.tongUVNhap)} sub="100% — toàn bộ UV nhập tháng"       bg="bg-slate-800" />
+                <KpiCard label="Hợp Lệ Thô"   value={n(tq.hopLeTho)}  sub={pct(tq.hopLeTho,tq.tongUVNhap)+' / Tổng'} bg="bg-green-800" />
+                <KpiCard label="Trùng Thô"     value={n(tq.trungTho)}  sub={pct(tq.trungTho,tq.tongUVNhap)+' / Tổng'} bg="bg-red-800"   />
+                <KpiCard label="Chưa Check"    value={n(tq.chuaCheck)} sub={pct(tq.chuaCheck,tq.tongUVNhap)+' / Tổng'} bg="bg-slate-600" />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <KpiCard label="HL Lần 2 (loại)"    value={n(tq.hlLan2)}    sub="Cùng tên + ngày, HL từ lần 2 trở lên"    bg="bg-blue-700" />
+                <KpiCard label="Trùng Lần 2 (loại)" value={n(tq.trungLan2)} sub="Cùng tên + ngày, Trùng từ lần 2 trở lên" bg="bg-purple-700" />
+              </div>
             </div>
           </Section>
 
-          {/* Bảng 2 — Phễu chuyển đổi */}
+          {/* ── Bảng 2 — Phễu chuyển đổi ─────────────────────────── */}
           {data.pheu && data.pheu.length > 0 && (
-            <Section title="Bảng 2 — Phễu chuyển đổi">
+            <Section title="BẢNG 2 — TỔNG SỐ LƯỢNG QUA CÁC KHÂU & TỶ LỆ CHUYỂN ĐỔI (UV Hợp Lệ Net)">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="text-left py-2 px-3 text-slate-500 font-medium">Bước</th>
-                      <th className="text-right py-2 px-3 text-slate-500 font-medium">Số lượng</th>
-                      <th className="py-2 px-3 text-slate-500 font-medium w-48">Thanh</th>
+                    <tr className="bg-blue-600 text-white text-xs">
+                      <th className="py-2.5 px-4 text-left font-semibold">Phễu Chuyển Đổi</th>
+                      <th className="py-2.5 px-4 text-right font-semibold">Số lượng</th>
+                      <th className="py-2.5 px-4 text-right font-semibold">% / Net</th>
+                      <th className="py-2.5 px-4 text-right font-semibold">% / HL Net</th>
+                      <th className="py-2.5 px-3 w-36">Thanh</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.pheu.map((row, i) => {
-                      const max = data.pheu![0].val || 1
-                      const pct = Math.round((row.val / max) * 100)
+                      const uvNet = data.pheu![0].val || 1
+                      const hlNet = data.pheu![1]?.val || 1
+                      const isHL  = i === 1
+                      const barPct = Math.round((row.val / uvNet) * 100)
                       return (
-                        <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
-                          <td className="py-2.5 px-3 text-slate-700">{row.label}</td>
-                          <td className="py-2.5 px-3 text-right font-semibold text-slate-900">{row.val.toLocaleString()}</td>
+                        <tr key={i} className={`border-b border-slate-100 ${isHL ? 'bg-green-50' : 'hover:bg-slate-50'}`}>
+                          <td className={`py-2.5 px-4 ${isHL ? 'font-semibold text-green-800' : 'text-slate-700'}`}>{row.label}</td>
+                          <td className={`py-2.5 px-4 text-right font-bold ${isHL ? 'text-green-700' : 'text-slate-900'}`}>{n(row.val)}</td>
+                          <td className="py-2.5 px-4 text-right text-slate-400 text-xs">{pct(row.val, uvNet)}</td>
+                          <td className="py-2.5 px-4 text-right text-slate-400 text-xs">{i > 0 ? pct(row.val, hlNet) : '—'}</td>
                           <td className="py-2.5 px-3">
-                            <div className="bg-slate-100 rounded-full h-2">
-                              <div
-                                className="bg-blue-500 h-2 rounded-full transition-all"
-                                style={{ width: `${pct}%` }}
-                              />
+                            <div className="bg-slate-100 rounded-full h-2.5">
+                              <div className={`h-2.5 rounded-full transition-all ${isHL ? 'bg-green-500' : 'bg-blue-500'}`}
+                                style={{width:`${barPct}%`}} />
                             </div>
                           </td>
                         </tr>
@@ -208,118 +188,180 @@ export default function BCThangPage() {
             </Section>
           )}
 
-          {/* Bảng 3 — Theo tuần */}
+          {/* ── Bảng 3 — Theo tuần ────────────────────────────────── */}
           {data.weeklyHL && data.weeklyHL.length > 0 && (
-            <Section title="Bảng 3 — HL Net theo tuần">
+            <Section title="BẢNG 3 — THỐNG KÊ HL NET THEO TUẦN">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="text-left py-2 px-3 text-slate-500 font-medium">Tuần</th>
-                      <th className="text-left py-2 px-3 text-slate-500 font-medium">Thời gian</th>
-                      <th className="text-right py-2 px-3 text-slate-500 font-medium">HL Net</th>
+                    <tr className="bg-slate-700 text-white text-xs">
+                      <th className="py-2.5 px-4 text-left font-semibold">Tuần</th>
+                      <th className="py-2.5 px-4 text-left font-semibold">Thời gian</th>
+                      <th className="py-2.5 px-4 text-right font-semibold">HL Net</th>
+                      <th className="py-2.5 px-4 text-right font-semibold">% / Tổng</th>
+                      <th className="py-2.5 px-3 w-36">Thanh</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.weeklyHL.map(w => (
-                      <tr key={w.week} className="border-b border-slate-50 hover:bg-slate-50">
-                        <td className="py-2.5 px-3 text-slate-600 font-medium">Tuần {w.week}</td>
-                        <td className="py-2.5 px-3 text-slate-500">{w.label}</td>
-                        <td className="py-2.5 px-3 text-right font-semibold text-blue-600">{w.hlNet}</td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      const maxHL = Math.max(...(data.weeklyHL?.map(w=>w.hlNet) ?? [1]), 1)
+                      return data.weeklyHL!.map(w => (
+                        <tr key={w.week} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="py-2.5 px-4 font-bold text-slate-700">T{w.week}</td>
+                          <td className="py-2.5 px-4 text-slate-500 text-xs">{w.label}</td>
+                          <td className="py-2.5 px-4 text-right font-bold text-blue-700">{w.hlNet}</td>
+                          <td className="py-2.5 px-4 text-right text-slate-400 text-xs">{pct(w.hlNet, tq.hlNet)}</td>
+                          <td className="py-2.5 px-3">
+                            <div className="bg-slate-100 rounded-full h-2.5">
+                              <div className="bg-blue-500 h-2.5 rounded-full" style={{width:`${Math.round(w.hlNet/maxHL*100)}%`}} />
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    })()}
+                    <tr className="bg-blue-50 font-bold border-t-2 border-blue-200">
+                      <td className="py-2.5 px-4 text-blue-700" colSpan={2}>Tổng</td>
+                      <td className="py-2.5 px-4 text-right text-blue-700">{n(tq.hlNet)}</td>
+                      <td className="py-2.5 px-4 text-right text-blue-400 text-xs">100%</td>
+                      <td></td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
             </Section>
           )}
 
-          {/* Bảng 4 — Trạng thái & Phân loại */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* ── Bảng 4+5 — Trạng thái & Phân loại ───────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {data.trangThaiList && data.trangThaiList.length > 0 && (
-              <Section title="Trạng Thái (HL Net)">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="text-left py-2 px-3 text-slate-500 font-medium">Trạng thái</th>
-                      <th className="text-right py-2 px-3 text-slate-500 font-medium">SL</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.trangThaiList.map((r, i) => (
-                      <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
-                        <td className="py-2 px-3 text-slate-700">{r.trangThai}</td>
-                        <td className="py-2 px-3 text-right font-semibold text-slate-900">{r.soLuong}</td>
+              <Section title="BẢNG 4 — TRẠNG THÁI (UV Hợp Lệ Net)">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-blue-600 text-white text-xs">
+                        <th className="py-2 px-3 text-left font-semibold">STT</th>
+                        <th className="py-2 px-3 text-left font-semibold">Trạng Thái</th>
+                        <th className="py-2 px-3 text-right font-semibold">SL</th>
+                        <th className="py-2 px-3 text-right font-semibold">Tỷ Lệ</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {data.trangThaiList.map((r,i)=>(
+                        <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="py-2 px-3 text-slate-400 text-xs">{i+1}</td>
+                          <td className="py-2 px-3 text-slate-700">{r.trangThai}</td>
+                          <td className="py-2 px-3 text-right font-bold text-slate-900">{r.soLuong}</td>
+                          <td className="py-2 px-3 text-right text-slate-400 text-xs">{pct(r.soLuong,tq.hlNet)}</td>
+                        </tr>
+                      ))}
+                      <tr className="bg-blue-50 font-bold border-t-2 border-blue-200 text-blue-700">
+                        <td className="py-2 px-3" colSpan={2}>TỔNG</td>
+                        <td className="py-2 px-3 text-right">{n(tq.hlNet)}</td>
+                        <td className="py-2 px-3 text-right text-xs">100%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </Section>
             )}
 
             {data.phanLoaiList && data.phanLoaiList.length > 0 && (
-              <Section title="Phân Loại (HL Net)">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="text-left py-2 px-3 text-slate-500 font-medium">Phân loại</th>
-                      <th className="text-right py-2 px-3 text-slate-500 font-medium">SL</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.phanLoaiList.map((r, i) => (
-                      <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
-                        <td className="py-2 px-3 text-slate-700">{r.phanLoai}</td>
-                        <td className="py-2 px-3 text-right font-semibold text-slate-900">{r.soLuong}</td>
+              <Section title="BẢNG 5 — PHÂN LOẠI (UV Hợp Lệ Net)">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-blue-600 text-white text-xs">
+                        <th className="py-2 px-3 text-left font-semibold">STT</th>
+                        <th className="py-2 px-3 text-left font-semibold">Phân Loại</th>
+                        <th className="py-2 px-3 text-right font-semibold">SL</th>
+                        <th className="py-2 px-3 text-right font-semibold">Tỷ Lệ</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {data.phanLoaiList.map((r,i)=>(
+                        <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="py-2 px-3 text-slate-400 text-xs">{i+1}</td>
+                          <td className="py-2 px-3 text-slate-700">{r.phanLoai}</td>
+                          <td className="py-2 px-3 text-right font-bold text-slate-900">{r.soLuong}</td>
+                          <td className="py-2 px-3 text-right text-slate-400 text-xs">{pct(r.soLuong,tq.hlNet)}</td>
+                        </tr>
+                      ))}
+                      <tr className="bg-blue-50 font-bold border-t-2 border-blue-200 text-blue-700">
+                        <td className="py-2 px-3" colSpan={2}>TỔNG</td>
+                        <td className="py-2 px-3 text-right">{n(tq.hlNet)}</td>
+                        <td className="py-2 px-3 text-right text-xs">100%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </Section>
             )}
           </div>
+
+          {/* ── Bảng 6 — Thị Trường ──────────────────────────────── */}
+          {data.byThiTruong && data.byThiTruong.length > 0 && (
+            <Section title="BẢNG 6 — THỐNG KÊ THEO THỊ TRƯỜNG (UV Net: HL + Trùng + Chưa Check)">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-blue-600 text-white text-xs">
+                      <th className="py-2.5 px-3 text-left font-semibold">STT</th>
+                      <th className="py-2.5 px-3 text-left font-semibold">Thị Trường</th>
+                      <th className="py-2.5 px-3 text-right font-semibold">Tổng UV</th>
+                      <th className="py-2.5 px-3 text-right font-semibold text-green-200">Hợp Lệ</th>
+                      <th className="py-2.5 px-3 text-right font-semibold text-red-200">Trùng</th>
+                      <th className="py-2.5 px-3 text-right font-semibold">Chưa Check</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.byThiTruong.map((r,i)=>(
+                      <tr key={i} className={`border-b border-slate-100 hover:bg-slate-50 ${i%2===1?'bg-slate-50/50':''}`}>
+                        <td className="py-2 px-3 text-slate-400 text-xs">{i+1}</td>
+                        <td className="py-2 px-3 text-slate-700 font-medium">{r.label}</td>
+                        <td className="py-2 px-3 text-right font-bold text-slate-900">{n(r.uvNet)}</td>
+                        <td className="py-2 px-3 text-right font-bold text-green-700">{n(r.hlNet)}</td>
+                        <td className="py-2 px-3 text-right font-bold text-red-600">{n(r.trungNet)}</td>
+                        <td className="py-2 px-3 text-right text-slate-500">{n(r.chuaCheck)}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-blue-600 text-white font-bold text-sm">
+                      <td className="py-2.5 px-3" colSpan={2}>TỔNG</td>
+                      <td className="py-2.5 px-3 text-right">{n(tq.hlNet+tq.trungNet+tq.chuaCheck)}</td>
+                      <td className="py-2.5 px-3 text-right">{n(tq.hlNet)}</td>
+                      <td className="py-2.5 px-3 text-right">{n(tq.trungNet)}</td>
+                      <td className="py-2.5 px-3 text-right">{n(tq.chuaCheck)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </Section>
+          )}
         </>
       )}
     </div>
   )
 }
 
-// ── Helper components ─────────────────────────────────────────────────
-
+// ── Sub-components ─────────────────────────────────────────────────────
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-3 border-b border-slate-100">
-        <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
+      <div className="px-5 py-3 bg-slate-50 border-b border-slate-200">
+        <h2 className="text-xs font-bold text-slate-600 tracking-wide">{title}</h2>
       </div>
       <div className="p-5">{children}</div>
     </div>
   )
 }
 
-const COLOR_MAP: Record<string, string> = {
-  blue:   'bg-blue-50 text-blue-700 border-blue-100',
-  green:  'bg-emerald-50 text-emerald-700 border-emerald-100',
-  orange: 'bg-orange-50 text-orange-700 border-orange-100',
-  purple: 'bg-purple-50 text-purple-700 border-purple-100',
-  indigo: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-  cyan:   'bg-cyan-50 text-cyan-700 border-cyan-100',
-  red:    'bg-red-50 text-red-600 border-red-100',
-  slate:  'bg-slate-50 text-slate-600 border-slate-100',
-}
-
-function StatCard({
-  label, value, color = 'slate', bold = false
-}: {
-  label: string; value: number; color?: string; bold?: boolean
+function KpiCard({ label, value, sub, bg, isText = false }: {
+  label: string; value: string; sub?: string; bg: string; isText?: boolean
 }) {
-  const cls = COLOR_MAP[color] || COLOR_MAP.slate
   return (
-    <div className={`rounded-xl border px-4 py-3 ${cls}`}>
-      <p className="text-xs opacity-70 mb-1">{label}</p>
-      <p className={`text-2xl ${bold ? 'font-bold' : 'font-semibold'}`}>
-        {value?.toLocaleString() ?? '—'}
-      </p>
+    <div className={`${bg} text-white rounded-xl px-4 py-3`}>
+      <p className="text-xs opacity-80 mb-1 font-medium">{label}</p>
+      <p className="text-2xl font-bold leading-none">{value}</p>
+      {sub && <p className="text-xs opacity-70 mt-1.5">{sub}</p>}
     </div>
   )
 }
