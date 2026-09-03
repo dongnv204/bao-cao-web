@@ -1,53 +1,78 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { verifySession } from '@/lib/auth'
+import { createSession, COOKIE_NAME } from '@/lib/auth'
 import bcrypt from 'bcryptjs'
 
-// Dùng service role key để bypass RLS
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
 )
 
 export async function POST(request: NextRequest) {
-  const session = await verifySession()
-  if (!session || session.role !== 'admin') {
-    return NextResponse.json({ error: 'Không có quyền' }, { status: 403 })
-  }
-
   try {
-    const { username, full_name, password, role } = await request.json()
+    const { username, password } = await request.json()
 
-    if (!username || !full_name || !password || !role) {
-      return NextResponse.json({ error: 'Vui lòng điền đầy đủ thông tin' }, { status: 400 })
-    }
-    if (password.length < 8) {
-      return NextResponse.json({ error: 'Mật khẩu tối thiểu 8 ký tự' }, { status: 400 })
-    }
-    if (!['admin', 'manager', 'viewer'].includes(role)) {
-      return NextResponse.json({ error: 'Role không hợp lệ' }, { status: 400 })
+    if (!username || !password) {
+      return NextResponse.json(
+        { error: 'Vui lòng nhập tên đăng nhập và mật khẩu' },
+        { status: 400 }
+      )
     }
 
-    const password_hash = await bcrypt.hash(password, 12)
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', username.trim().toLowerCase())
+      .eq('active', true)
+      .single()
 
-    const { error } = await supabase.from('users').insert({
-      username: username.trim().toLowerCase(),
-      full_name: full_name.trim(),
-      password_hash,
-      role,
-      active: true,
+    if (error || !user) {
+      return NextResponse.json(
+        { error: 'Tên đăng nhập hoặc mật khẩu không đúng' },
+        { status: 401 }
+      )
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.password_hash)
+
+    if (!passwordMatch) {
+      return NextResponse.json(
+        { error: 'Tên đăng nhập hoặc mật khẩu không đúng' },
+        { status: 401 }
+      )
+    }
+
+    const token = await createSession({
+      id: user.id,
+      username: user.username,
+      full_name: user.full_name,
+      role: user.role,
     })
 
-    if (error) {
-      if (error.code === '23505') {
-        return NextResponse.json({ error: 'Tên đăng nhập đã tồn tại' }, { status: 409 })
-      }
-      throw error
-    }
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        full_name: user.full_name,
+        role: user.role,
+      },
+    })
 
-    return NextResponse.json({ success: true })
+    response.cookies.set(COOKIE_NAME, token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 8,
+      path: '/',
+    })
+
+    return response
   } catch (err) {
-    console.error('Create user error:', err)
-    return NextResponse.json({ error: 'Lỗi hệ thống' }, { status: 500 })
+    console.error('Login error:', err)
+    return NextResponse.json(
+      { error: 'Lỗi hệ thống, vui lòng thử lại' },
+      { status: 500 }
+    )
   }
 }
