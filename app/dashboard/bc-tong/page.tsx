@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 // ── Types ─────────────────────────────────────────────────────────────
 interface StatRow   { label: string; val: number }
@@ -45,38 +45,114 @@ const COLOR: Record<string, { card: string; badge: string; bar: string }> = {
 }
 
 // ── Component chính ───────────────────────────────────────────────────
+
+// ── Multi-tab state ────────────────────────────────────────────────────
+interface TabState {
+  id: string
+  month: number
+  year: number
+  data: BCTongData | null
+  loading: boolean
+  error: string
+  refreshing: boolean
+}
+
 export default function BCTongPage() {
-  const now   = new Date()
-  const [month,   setMonth]   = useState(now.getMonth() + 1)
-  const [year,    setYear]    = useState(now.getFullYear())
-  const [data,    setData]    = useState<BCTongData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState('')
+  const now    = new Date()
+  const nextId = useRef(2)
 
-  const fetchData = useCallback(async () => {
-    setLoading(true); setError(''); setData(null)
+  // ── Tabs ──────────────────────────────────────────────────────────────
+  const [tabs, setTabs]               = useState<TabState[]>([
+    { id: '1', month: now.getMonth() + 1, year: now.getFullYear(), data: null, loading: false, error: '', refreshing: false }
+  ])
+  const [activeTabId, setActiveTabId] = useState('1')
+
+  const updateTab = useCallback((id: string, patch: Partial<TabState>) => {
+    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
+  }, [])
+
+  // Alias — JSX bên dưới không cần sửa
+  const activeTab  = tabs.find(t => t.id === activeTabId) ?? tabs[0]
+  const month      = activeTab.month
+  const setMonth   = (m: number) => updateTab(activeTabId, { month: m })
+  const year       = activeTab.year
+  const setYear    = (y: number) => updateTab(activeTabId, { year: y })
+  const data       = activeTab.data
+  const loading    = activeTab.loading
+  const error      = activeTab.error
+  const refreshing = activeTab.refreshing
+
+  // Tải dữ liệu cho 1 tab cụ thể
+  const fetchData = useCallback(async (m: number, y: number, tabId: string) => {
+    updateTab(tabId, { loading: true, error: '', data: null })
     try {
-      const res = await fetch(`/api/reports/bc-tong?month=${month}&year=${year}`)
+      const res = await fetch(`/api/reports/bc-tong?month=${m}&year=${y}`)
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`) }
-      setData(await res.json())
-    } catch (e: any) { setError(e.message) }
-    finally { setLoading(false) }
-  }, [month, year])
+      updateTab(tabId, { data: await res.json() })
+    } catch (e: any) { updateTab(tabId, { error: e.message }) }
+    finally { updateTab(tabId, { loading: false }) }
+  }, [updateTab])
 
-  const [refreshing, setRefreshing] = useState(false)
   const refreshData = async () => {
-    setRefreshing(true)
+    const id = activeTabId
+    const t  = activeTab
+    updateTab(id, { refreshing: true })
     await fetch(`/api/revalidate?tag=bc-tong`, { method: 'POST' }).catch(() => {})
-    await fetchData()
-    setRefreshing(false)
+    await fetchData(t.month, t.year, id)
+    updateTab(id, { refreshing: false })
   }
 
-  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { fetchData(now.getMonth() + 1, now.getFullYear(), '1') }, [])
+
+  // Thêm tab mới
+  const addTab = () => {
+    const id = String(nextId.current++)
+    const m  = now.getMonth() + 1
+    const y  = now.getFullYear()
+    const newTab: TabState = { id, month: m, year: y, data: null, loading: false, error: '', refreshing: false }
+    setTabs(prev => [...prev, newTab])
+    setActiveTabId(id)
+    fetchData(m, y, id)
+  }
+
+  // Đóng tab (không đóng tab cuối)
+  const closeTab = (id: string) => {
+    const next = tabs.filter(t => t.id !== id)
+    if (next.length === 0) return
+    setTabs(next)
+    if (activeTabId === id) {
+      const idx = tabs.findIndex(t => t.id === id)
+      setActiveTabId(next[Math.min(idx, next.length - 1)].id)
+    }
+  }
 
   const tq = data?.tongQuan
 
   return (
     <div className="space-y-6">
+      {/* ── TAB BAR ── */}
+      <div className="flex items-center gap-1 bg-slate-100 rounded-xl px-2 py-1.5 overflow-x-auto mb-1">
+        {tabs.map(tab => {
+          const isActive = tab.id === activeTabId
+          const label = `T${tab.month}/${tab.year}`
+          return (
+            <div key={tab.id}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition whitespace-nowrap
+                ${isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'}`}
+              onClick={() => setActiveTabId(tab.id)}>
+              <span>{tab.loading ? '⏳' : '📊'} {label}</span>
+              {tabs.length > 1 && (
+                <button onClick={e => { e.stopPropagation(); closeTab(tab.id) }}
+                  className="ml-1 text-slate-400 hover:text-red-400 transition leading-none">×</button>
+              )}
+            </div>
+          )
+        })}
+        <button onClick={addTab}
+          className="px-2.5 py-1.5 text-slate-400 hover:text-blue-600 hover:bg-white/60 rounded-lg transition text-base font-bold leading-none"
+          title="Mở tab mới">+</button>
+      </div>
+
       {/* Tiêu đề + bộ lọc */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -98,7 +174,7 @@ export default function BCTongPage() {
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-          <button onClick={fetchData} disabled={loading}
+          <button onClick={() => fetchData(month, year, activeTabId)} disabled={loading}
             className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition">
             {loading ? 'Đang tải...' : 'Xem'}
           </button>

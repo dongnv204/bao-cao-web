@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 // ════════════════════════════════════════════════════════════════
 //  TYPES
@@ -191,43 +191,93 @@ function ErrorBox({ msg }: { msg: string }) {
 // ════════════════════════════════════════════════════════════════
 //  PAGE
 // ════════════════════════════════════════════════════════════════
-export default function TuyenDungPage() {
-  const today = new Date()
-  const [selectedDate, setSelectedDate] = useState(
-    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  )
-  const [data, setData]       = useState<ReportData | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState('')
 
-  const dateObj = new Date(selectedDate + 'T00:00:00')
+// ════════════════════════════════════════════════════════════════
+//  MULTI-TAB STATE
+// ════════════════════════════════════════════════════════════════
+interface TabState {
+  id: string
+  date: string
+  data: ReportData | null
+  loading: boolean
+  error: string
+  refreshing: boolean
+}
+
+export default function TuyenDungPage() {
+  const today    = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const nextId   = useRef(2)
+
+  // ── Tabs ──────────────────────────────────────────────────────────────
+  const [tabs, setTabs]               = useState<TabState[]>([
+    { id: '1', date: todayStr, data: null, loading: false, error: '', refreshing: false }
+  ])
+  const [activeTabId, setActiveTabId] = useState('1')
+
+  // Cập nhật fields của 1 tab theo id
+  const updateTab = useCallback((id: string, patch: Partial<TabState>) => {
+    setTabs(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
+  }, [])
+
+  // Alias — JSX bên dưới không cần sửa
+  const activeTab       = tabs.find(t => t.id === activeTabId) ?? tabs[0]
+  const selectedDate    = activeTab.date
+  const setSelectedDate = (d: string) => updateTab(activeTabId, { date: d })
+  const data            = activeTab.data
+  const loading         = activeTab.loading
+  const error           = activeTab.error
+  const refreshing      = activeTab.refreshing
+
+  const dateObj    = new Date(selectedDate + 'T00:00:00')
   const displayDate = dateObj.toLocaleDateString('vi-VN', {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
 
-  const loadData = useCallback(async (dateStr: string) => {
-    setLoading(true); setError('')
+  // Tải dữ liệu cho 1 tab cụ thể
+  const loadData = useCallback(async (dateStr: string, tabId: string) => {
+    updateTab(tabId, { loading: true, error: '' })
     try {
       const d = new Date(dateStr + 'T00:00:00')
       const res = await fetch(
         `/api/reports/tuyen-dung?day=${d.getDate()}&month=${d.getMonth()+1}&year=${d.getFullYear()}`
       )
       const json = await res.json()
-      if (!res.ok) { setData(null); setError(json.error || 'Lỗi không xác định') }
-      else setData(json)
-    } catch { setData(null); setError('Lỗi kết nối máy chủ') }
-    finally { setLoading(false) }
-  }, [])
+      if (!res.ok) { updateTab(tabId, { data: null, error: json.error || 'Lỗi không xác định' }) }
+      else updateTab(tabId, { data: json })
+    } catch { updateTab(tabId, { data: null, error: 'Lỗi kết nối máy chủ' }) }
+    finally { updateTab(tabId, { loading: false }) }
+  }, [updateTab])
 
-  useEffect(() => { loadData(selectedDate) }, [])
+  useEffect(() => { loadData(todayStr, '1') }, [])
 
   // Xoá cache server rồi tải lại dữ liệu mới nhất
-  const [refreshing, setRefreshing] = useState(false)
   const refreshData = async () => {
-    setRefreshing(true)
+    const id = activeTabId
+    updateTab(id, { refreshing: true })
     await fetch(`/api/revalidate?tag=bc-ngay`, { method: 'POST' }).catch(() => {})
-    await loadData(selectedDate)
-    setRefreshing(false)
+    await loadData(activeTab.date, id)
+    updateTab(id, { refreshing: false })
+  }
+
+  // Thêm tab mới (mặc định ngày hôm nay)
+  const addTab = () => {
+    const id = String(nextId.current++)
+    const newTab: TabState = { id, date: todayStr, data: null, loading: false, error: '', refreshing: false }
+    setTabs(prev => [...prev, newTab])
+    setActiveTabId(id)
+    loadData(todayStr, id)
+  }
+
+  // Đóng tab (không đóng tab cuối)
+  const closeTab = (id: string) => {
+    const next = tabs.filter(t => t.id !== id)
+    if (next.length === 0) return
+    setTabs(next)
+    if (activeTabId === id) {
+      const idx = tabs.findIndex(t => t.id === id)
+      setActiveTabId(next[Math.min(idx, next.length - 1)].id)
+    }
   }
 
   const b1  = data?.bang1
@@ -259,6 +309,30 @@ export default function TuyenDungPage() {
   return (
     <div className="space-y-6 pb-10">
 
+      {/* ── TAB BAR ── */}
+      <div className="flex items-center gap-1 bg-slate-100 rounded-xl px-2 py-1.5 overflow-x-auto">
+        {tabs.map(tab => {
+          const tabDate = new Date(tab.date + 'T00:00:00')
+          const label   = tabDate.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+          const isActive = tab.id === activeTabId
+          return (
+            <div key={tab.id}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition whitespace-nowrap
+                ${isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'}`}
+              onClick={() => setActiveTabId(tab.id)}>
+              <span>{tab.loading ? '⏳' : '📅'} {label}</span>
+              {tabs.length > 1 && (
+                <button onClick={e => { e.stopPropagation(); closeTab(tab.id) }}
+                  className="ml-1 text-slate-400 hover:text-red-400 transition leading-none">×</button>
+              )}
+            </div>
+          )
+        })}
+        <button onClick={addTab}
+          className="px-2.5 py-1.5 text-slate-400 hover:text-blue-600 hover:bg-white/60 rounded-lg transition text-base font-bold leading-none"
+          title="Mở tab mới">+</button>
+      </div>
+
       {/* ── HEADER ── */}
       <div className="bg-[#0d1b6b] text-white rounded-2xl px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -273,7 +347,7 @@ export default function TuyenDungPage() {
                        outline-none focus:border-white/50 transition [color-scheme:dark]"
           />
           <button
-            onClick={() => loadData(selectedDate)} disabled={loading}
+            onClick={() => loadData(selectedDate, activeTabId)} disabled={loading}
             className="bg-white text-[#0d1b6b] text-sm font-bold px-4 py-2 rounded-lg
                        hover:bg-blue-50 transition disabled:opacity-50 flex items-center gap-2"
           >
