@@ -26,12 +26,13 @@ export async function POST(request: NextRequest) {
       .eq('active', true)
       .single()
 
-    if (error || !user) {
-      return NextResponse.json(
-        { error: 'Tên đăng nhập hoặc mật khẩu không đúng' },
-        { status: 401 }
-      )
-    }
+if (error || !user) {
+  console.error('Supabase error:', JSON.stringify(error), 'user:', user)
+  return NextResponse.json(
+    { error: 'Tên đăng nhập hoặc mật khẩu không đúng' },
+    { status: 401 }
+  )
+}
 
     const passwordMatch = await bcrypt.compare(password, user.password_hash)
 
