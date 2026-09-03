@@ -13,7 +13,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Vui lòng nhập đầy đủ thông tin' }, { status: 400 })
     }
 
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    // Đọc env vars lúc runtime — hỗ trợ cả 2 tên biến (SUPABASE_URL và NEXT_PUBLIC_SUPABASE_URL)
+    const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
     if (!url || !key) {
