@@ -3,44 +3,39 @@ import { createClient } from '@supabase/supabase-js'
 import { createSession, COOKIE_NAME } from '@/lib/auth'
 import bcrypt from 'bcryptjs'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
-)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json()
+    const body = await request.json()
+    const username = (body.username ?? '').trim().toLowerCase()
+    const password = body.password ?? ''
 
     if (!username || !password) {
-      return NextResponse.json(
-        { error: 'Vui lòng nhập tên đăng nhập và mật khẩu' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Vui lòng nhập đầy đủ thông tin' }, { status: 400 })
     }
 
     const { data: user, error } = await supabase
       .from('users')
-      .select('*')
-      .eq('username', username.trim().toLowerCase())
+      .select('id, username, full_name, role, password_hash, active')
+      .eq('username', username)
       .eq('active', true)
-      .single()
+      .maybeSingle()
 
-if (error || !user) {
-  console.error('Supabase error:', JSON.stringify(error), 'user:', user)
-  return NextResponse.json(
-    { error: 'Tên đăng nhập hoặc mật khẩu không đúng' },
-    { status: 401 }
-  )
-}
+    if (error) {
+      console.error('DB error:', error.message)
+      return NextResponse.json({ error: 'Lỗi hệ thống' }, { status: 500 })
+    }
 
-    const passwordMatch = await bcrypt.compare(password, user.password_hash)
+    if (!user) {
+      return NextResponse.json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' }, { status: 401 })
+    }
 
-    if (!passwordMatch) {
-      return NextResponse.json(
-        { error: 'Tên đăng nhập hoặc mật khẩu không đúng' },
-        { status: 401 }
-      )
+    const ok = await bcrypt.compare(password, user.password_hash)
+    if (!ok) {
+      return NextResponse.json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' }, { status: 401 })
     }
 
     const token = await createSession({
@@ -50,30 +45,12 @@ if (error || !user) {
       role: user.role,
     })
 
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        username: user.username,
-        full_name: user.full_name,
-        role: user.role,
-      },
-    })
+    const res = NextResponse.json({ success: true, user: { id: user.id, username: user.username, full_name: user.full_name, role: user.role } })
+    res.cookies.set(COOKIE_NAME, token, { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 60 * 60 * 8, path: '/' })
+    return res
 
-    response.cookies.set(COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 8,
-      path: '/',
-    })
-
-    return response
   } catch (err) {
     console.error('Login error:', err)
-    return NextResponse.json(
-      { error: 'Lỗi hệ thống, vui lòng thử lại' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Lỗi hệ thống' }, { status: 500 })
   }
 }
