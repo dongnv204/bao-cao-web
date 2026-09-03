@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySession } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key'
+)
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
