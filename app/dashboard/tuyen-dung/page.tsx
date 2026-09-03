@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTabsStore } from '../tabs-store'
 
 // ════════════════════════════════════════════════════════════════
 //  TYPES
@@ -208,12 +209,18 @@ export default function TuyenDungPage() {
   const today    = new Date()
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   const nextId   = useRef(2)
+  const { getPage, savePage } = useTabsStore()
 
-  // ── Tabs ──────────────────────────────────────────────────────────────
-  const [tabs, setTabs]               = useState<TabState[]>([
-    { id: '1', date: todayStr, data: null, loading: false, error: '', refreshing: false }
-  ])
-  const [activeTabId, setActiveTabId] = useState('1')
+  // ── Tabs — khôi phục từ store nếu đã từng mở trang này ───────────────
+  const [tabs, setTabs] = useState<TabState[]>(() => {
+    const s = getPage('bc-ngay')
+    if (s && s.tabs.length > 0) return s.tabs as TabState[]
+    return [{ id: '1', date: todayStr, data: null, loading: false, error: '', refreshing: false }]
+  })
+  const [activeTabId, setActiveTabId] = useState<string>(() => {
+    const s = getPage('bc-ngay')
+    return s ? s.activeTabId : '1'
+  })
 
   // Cập nhật fields của 1 tab theo id
   const updateTab = useCallback((id: string, patch: Partial<TabState>) => {
@@ -249,7 +256,14 @@ export default function TuyenDungPage() {
     finally { updateTab(tabId, { loading: false }) }
   }, [updateTab])
 
-  useEffect(() => { loadData(todayStr, '1') }, [])
+  // Đồng bộ tabs → store mỗi khi thay đổi
+  useEffect(() => { savePage('bc-ngay', { tabs, activeTabId }) }, [tabs, activeTabId, savePage])
+
+  // Fix nextId khi khôi phục từ store
+  useEffect(() => {
+    const maxId = Math.max(...tabs.map(t => Number(t.id)))
+    if (maxId >= nextId.current) nextId.current = maxId + 1
+  }, [])
 
   // Xoá cache server rồi tải lại dữ liệu mới nhất
   const refreshData = async () => {

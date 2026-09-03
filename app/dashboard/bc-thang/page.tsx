@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useTabsStore } from '../tabs-store'
 
 // ── Types ──────────────────────────────────────────────────────────────
 interface TongQuan {
@@ -39,14 +40,20 @@ interface TabState {
 }
 
 export default function BCThangPage() {
-  const now   = new Date()
-  const nextId = useRef(2)
+  const now    = new Date()
+  const nextId  = useRef(2)
+  const { getPage, savePage } = useTabsStore()
 
-  // ── Tabs ──────────────────────────────────────────────────────────────
-  const [tabs, setTabs]               = useState<TabState[]>([
-    { id: '1', month: now.getMonth() + 1, year: now.getFullYear(), data: null, loading: false, error: '', refreshing: false }
-  ])
-  const [activeTabId, setActiveTabId] = useState('1')
+  // ── Tabs — khôi phục từ store nếu đã từng mở trang này ───────────────
+  const [tabs, setTabs] = useState<TabState[]>(() => {
+    const s = getPage('bc-thang')
+    if (s && s.tabs.length > 0) return s.tabs as TabState[]
+    return [{ id: '1', month: now.getMonth() + 1, year: now.getFullYear(), data: null, loading: false, error: '', refreshing: false }]
+  })
+  const [activeTabId, setActiveTabId] = useState<string>(() => {
+    const s = getPage('bc-thang')
+    return s ? s.activeTabId : '1'
+  })
 
   const updateTab = useCallback((id: string, patch: Partial<TabState>) => {
     setTabs(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
@@ -82,7 +89,20 @@ export default function BCThangPage() {
     updateTab(id, { refreshing: false })
   }
 
-  useEffect(() => { fetchData(now.getMonth() + 1, now.getFullYear(), '1') }, [])
+  // Đồng bộ tabs → store mỗi khi thay đổi
+  useEffect(() => { savePage('bc-thang', { tabs, activeTabId }) }, [tabs, activeTabId, savePage])
+
+  // Fix nextId khi khôi phục từ store
+  useEffect(() => {
+    const maxId = Math.max(...tabs.map(t => Number(t.id)))
+    if (maxId >= nextId.current) nextId.current = maxId + 1
+  }, []) // chỉ chạy 1 lần lúc mount
+
+  // Tải lần đầu — bỏ qua nếu tab đã có data (khôi phục từ store)
+  useEffect(() => {
+    const first = tabs[0]
+    if (!first.data && !first.loading) fetchData(first.month, first.year, first.id)
+  }, [])
 
   // Thêm tab mới
   const addTab = () => {
