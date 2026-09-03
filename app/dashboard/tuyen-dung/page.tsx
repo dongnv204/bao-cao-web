@@ -373,9 +373,9 @@ export default function TuyenDungPage() {
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Net</p>
                   <div className="grid grid-cols-2 gap-3">
                     <KpiProgress label="Tổng UV Net" val={b2.net.uvNet}    target={b2.net.targetUvNetNgay} bg="bg-[#00695c]" />
+                    <KpiSingle   label="Tỷ Lệ HL"    val={fmtPct(b2.net.tyLeHl)} sub="HL Net / (HL+Trùng) Net" bg="bg-[#b71c1c]" big />
                     <KpiProgress label="HL Net"      val={b2.net.hlNet}    target={b2.net.targetHlNetNgay} bg="bg-[#f9a825]" />
                     <KpiProgress label="Trùng Net"   val={b2.net.trungNet} target={b2.net.targetTrungNgay} bg="bg-[#4a148c]" />
-                    <KpiSingle   label="Tỷ Lệ HL"    val={fmtPct(b2.net.tyLeHl)} sub="HL Net / (HL+Trùng) Net" bg="bg-[#b71c1c]" big />
                   </div>
                 </div>
               </div>
