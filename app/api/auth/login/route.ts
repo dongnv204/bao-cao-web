@@ -3,10 +3,6 @@ import { createClient } from '@supabase/supabase-js'
 import { createSession, COOKIE_NAME } from '@/lib/auth'
 import bcrypt from 'bcryptjs'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
-const supabase = createClient(supabaseUrl, supabaseKey)
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -17,6 +13,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Vui lòng nhập đầy đủ thông tin' }, { status: 400 })
     }
 
+    // Khởi tạo TRONG function để đọc được env vars lúc runtime
+    const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    const supabase = createClient(url, key, { auth: { persistSession: false } })
+
     const { data: user, error } = await supabase
       .from('users')
       .select('id, username, full_name, role, password_hash, active')
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('DB error:', error.message)
-      return NextResponse.json({ error: 'Lỗi hệ thống' }, { status: 500 })
+      return NextResponse.json({ error: 'Lỗi DB: ' + error.message }, { status: 500 })
     }
 
     if (!user) {
@@ -39,16 +40,21 @@ export async function POST(request: NextRequest) {
     }
 
     const token = await createSession({
-      id: user.id,
-      username: user.username,
-      full_name: user.full_name,
-      role: user.role,
+      id: user.id, username: user.username,
+      full_name: user.full_name, role: user.role,
     })
 
-    const res = NextResponse.json({ success: true, user: { id: user.id, username: user.username, full_name: user.full_name, role: user.role } })
-    res.cookies.set(COOKIE_NAME, token, { httpOnly: true, secure: true, sameSite: 'lax', maxAge: 60 * 60 * 8, path: '/' })
-    return res
+    const res = NextResponse.json({ success: true, user: {
+      id: user.id, username: user.username,
+      full_name: user.full_name, role: user.role
+    }})
 
+    res.cookies.set(COOKIE_NAME, token, {
+      httpOnly: true, secure: true,
+      sameSite: 'lax', maxAge: 60 * 60 * 8, path: '/',
+    })
+
+    return res
   } catch (err) {
     console.error('Login error:', err)
     return NextResponse.json({ error: 'Lỗi hệ thống' }, { status: 500 })
