@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTabsStore } from '../tabs-store'
+import { useMemo, useState as useLocalState } from 'react'
+import ExportButtons from '@/components/ExportButtons'
+import ComparePanel, { CompareRow } from '@/components/ComparePanel'
+import { exportBCTongExcel } from '@/lib/export-utils'
 
 // ── Types ─────────────────────────────────────────────────────────────
 interface StatRow   { label: string; val: number }
@@ -77,6 +81,37 @@ export default function BCTongPage() {
   const updateTab = useCallback((id: string, patch: Partial<TabState>) => {
     setTabs(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
   }, [])
+
+  // ── So sánh 2 tab ─────────────────────────────────────────────────
+  const [compareOpen, setCompareOpen] = useLocalState(false)
+  const [compareA, setCompareA]       = useLocalState(() => tabs[0]?.id ?? '1')
+  const [compareB, setCompareB]       = useLocalState(() => tabs[1]?.id ?? '1')
+
+  const compareRows = useMemo((): CompareRow[] => {
+    const dA = tabs.find(t => t.id === compareA)?.data
+    const dB = tabs.find(t => t.id === compareB)?.data
+    if (!dA?.tongQuan || !dB?.tongQuan) return []
+    const a = dA.tongQuan, b = dB.tongQuan
+    const rows: CompareRow[] = [
+      { label: 'Tổng quan', a: null, b: null, isSeparator: true },
+      { label: 'Duyệt',    a: a.duyet  ?? 0, b: b.duyet  ?? 0 },
+      { label: 'Ký HĐ',    a: a.kyHD   ?? 0, b: b.kyHD   ?? 0 },
+      { label: 'Đào Tạo',  a: a.daoTao ?? 0, b: b.daoTao ?? 0 },
+      { label: 'Đậu PV',   a: a.dauPV  ?? 0, b: b.dauPV  ?? 0 },
+    ]
+    // Chi tiết từng nhóm
+    const groups: { key: 'duyet'|'kyHD'|'daoTao'|'dauPV'; label: string }[] = [
+      { key: 'duyet', label: 'Duyệt' }, { key: 'kyHD', label: 'Ký HĐ' },
+      { key: 'daoTao', label: 'Đào Tạo' }, { key: 'dauPV', label: 'Đậu PV' },
+    ]
+    for (const g of groups) {
+      const gA = (dA as any)[g.key], gB = (dB as any)[g.key]
+      if (!gA && !gB) continue
+      rows.push({ label: g.label + ' — Chi tiết', a: null, b: null, isSeparator: true })
+      rows.push({ label: 'Tổng', a: gA?.total ?? 0, b: gB?.total ?? 0 })
+    }
+    return rows
+  }, [tabs, compareA, compareB])
 
   // Alias — JSX bên dưới không cần sửa
   const activeTab  = tabs.find(t => t.id === activeTabId) ?? tabs[0]
@@ -169,6 +204,11 @@ export default function BCTongPage() {
         <button onClick={addTab}
           className="px-2.5 py-1.5 text-slate-400 hover:text-blue-600 hover:bg-white/60 rounded-lg transition text-base font-bold leading-none"
           title="Mở tab mới">+</button>
+        {tabs.length >= 2 && (
+          <button onClick={() => { setCompareA(tabs[0].id); setCompareB(tabs[1].id); setCompareOpen(true) }}
+            className="ml-auto px-3 py-1.5 text-xs font-medium text-violet-600 hover:bg-violet-50 rounded-lg transition whitespace-nowrap no-print"
+            title="So sánh 2 tab">⚖️ So sánh</button>
+        )}
       </div>
 
       {/* Tiêu đề + bộ lọc */}
@@ -201,6 +241,10 @@ export default function BCTongPage() {
             className="px-3 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm hover:bg-slate-100 disabled:opacity-50 transition">
             {refreshing ? '...' : '🔄'}
           </button>
+          <ExportButtons
+            disabled={!data || loading}
+            onExcelClick={() => data && exportBCTongExcel(data, `T${month}-${year}`)}
+          />
         </div>
       </div>
 
@@ -254,6 +298,16 @@ export default function BCTongPage() {
             <MonthTable data={data} />
           </Section>
         </>
+      )}
+
+      {compareOpen && (
+        <ComparePanel
+          tabs={tabs.map(t => ({ id: t.id, label: `T${t.month}/${t.year}`, hasData: !!t.data }))}
+          tabAId={compareA} tabBId={compareB}
+          onTabAChange={setCompareA} onTabBChange={setCompareB}
+          rows={compareRows}
+          onClose={() => setCompareOpen(false)}
+        />
       )}
     </div>
   )

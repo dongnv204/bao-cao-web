@@ -21,3 +21,19 @@ body {
 ::-webkit-scrollbar-track { background: #f1f5f9; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── Print / PDF ─────────────────────────────────────────────────── */
+@media print {
+  /* Ẩn sidebar, tab bar, nút điều hướng */
+  aside, nav,
+  .no-print,
+  [data-no-print] { display: none !important; }
+
+  /* Main content full width */
+  main { margin-left: 0 !important; }
+
+  /* Tránh cắt giữa card */
+  .bg-white, section { break-inside: avoid; }
+
+  body { background: white; font-size: 12px; }
+}

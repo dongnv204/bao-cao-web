@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTabsStore } from '../tabs-store'
+import { useMemo, useState as useLocalState } from 'react'
+import ExportButtons from '@/components/ExportButtons'
+import ComparePanel, { CompareRow } from '@/components/ComparePanel'
+import { exportBCThangExcel } from '@/lib/export-utils'
 
 // ── Types ──────────────────────────────────────────────────────────────
 interface TongQuan {
@@ -58,6 +62,31 @@ export default function BCThangPage() {
   const updateTab = useCallback((id: string, patch: Partial<TabState>) => {
     setTabs(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
   }, [])
+
+  // ── So sánh 2 tab ─────────────────────────────────────────────────
+  const [compareOpen, setCompareOpen] = useLocalState(false)
+  const [compareA, setCompareA]       = useLocalState(() => tabs[0]?.id ?? '1')
+  const [compareB, setCompareB]       = useLocalState(() => tabs[1]?.id ?? '1')
+
+  const compareRows = useMemo((): CompareRow[] => {
+    const dA = tabs.find(t => t.id === compareA)?.data
+    const dB = tabs.find(t => t.id === compareB)?.data
+    if (!dA?.tongQuan || !dB?.tongQuan) return []
+    const a = dA.tongQuan, b = dB.tongQuan
+    return [
+      { label: 'UV Nhập (tháng)', a: a.tongUVNhap ?? 0, b: b.tongUVNhap ?? 0 },
+      { label: 'Hợp lệ thô',      a: a.hopLeTho  ?? 0, b: b.hopLeTho  ?? 0 },
+      { label: 'Trung thô',        a: a.trungTho  ?? 0, b: b.trungTho  ?? 0 },
+      { label: 'UV Net',           a: a.tongUVNet ?? 0, b: b.tongUVNet ?? 0 },
+      { label: 'Tỷ lệ HL (%)',     a: a.hlNet     ?? 0, b: b.hlNet     ?? 0, isPercent: true },
+      { label: 'Trung Net',        a: a.trungNet  ?? 0, b: b.trungNet  ?? 0 },
+      { label: 'Kết quả', a: null, b: null, isSeparator: true },
+      { label: 'Ký HĐ',    a: a.kyHD    ?? 0, b: b.kyHD    ?? 0 },
+      { label: 'Duyệt',    a: a.duyet   ?? 0, b: b.duyet   ?? 0 },
+      { label: 'Đào Tạo',  a: a.daoTao  ?? 0, b: b.daoTao  ?? 0 },
+      { label: 'Đậu PV',   a: a.dauPV   ?? 0, b: b.dauPV   ?? 0 },
+    ]
+  }, [tabs, compareA, compareB])
 
   // Alias — JSX bên dưới không cần sửa
   const activeTab  = tabs.find(t => t.id === activeTabId) ?? tabs[0]
@@ -153,6 +182,11 @@ export default function BCThangPage() {
         <button onClick={addTab}
           className="px-2.5 py-1.5 text-slate-400 hover:text-blue-600 hover:bg-white/60 rounded-lg transition text-base font-bold leading-none"
           title="Mở tab mới">+</button>
+        {tabs.length >= 2 && (
+          <button onClick={() => { setCompareA(tabs[0].id); setCompareB(tabs[1].id); setCompareOpen(true) }}
+            className="ml-auto px-3 py-1.5 text-xs font-medium text-violet-600 hover:bg-violet-50 rounded-lg transition whitespace-nowrap no-print"
+            title="So sánh 2 tab">⚖️ So sánh</button>
+        )}
       </div>
 
             {/* ── Header ──────────────────────────────────────────────────── */}
@@ -183,6 +217,10 @@ export default function BCThangPage() {
             className="px-3 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm hover:bg-slate-100 disabled:opacity-50 transition">
             {refreshing ? '...' : '🔄'}
           </button>
+          <ExportButtons
+            disabled={!data || loading}
+            onExcelClick={() => data && exportBCThangExcel(data, `T${month}-${year}`)}
+          />
         </div>
       </div>
 
@@ -445,6 +483,17 @@ export default function BCThangPage() {
             </Section>
           )}
         </>
+      )}
+
+      {/* So sánh panel */}
+      {compareOpen && (
+        <ComparePanel
+          tabs={tabs.map(t => ({ id: t.id, label: `T${t.month}/${t.year}`, hasData: !!t.data }))}
+          tabAId={compareA} tabBId={compareB}
+          onTabAChange={setCompareA} onTabBChange={setCompareB}
+          rows={compareRows}
+          onClose={() => setCompareOpen(false)}
+        />
       )}
     </div>
   )

@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTabsStore } from '../tabs-store'
+import { useMemo, useState as useLocalState } from 'react'
+import ExportButtons from '@/components/ExportButtons'
+import ComparePanel, { CompareRow } from '@/components/ComparePanel'
+import { exportBCNgayExcel } from '@/lib/export-utils'
 
 // ════════════════════════════════════════════════════════════════
 //  TYPES
@@ -227,6 +231,32 @@ export default function TuyenDungPage() {
     setTabs(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
   }, [])
 
+  // ── So sánh 2 tab ─────────────────────────────────────────────────
+  const [compareOpen, setCompareOpen] = useLocalState(false)
+  const [compareA, setCompareA]       = useLocalState(() => tabs[0]?.id ?? '1')
+  const [compareB, setCompareB]       = useLocalState(() => tabs[1]?.id ?? '1')
+
+  const compareRows = useMemo((): CompareRow[] => {
+    const dA = tabs.find(t => t.id === compareA)?.data
+    const dB = tabs.find(t => t.id === compareB)?.data
+    if (!dA?.bang1 || !dB?.bang1) return []
+    const a = dA.bang1, b = dB.bang1
+    return [
+      { label: 'Dữ liệu ngày', a: null, b: null, isSeparator: true },
+      { label: 'Form Nhập',    a: a.formNhapNgay  ?? 0, b: b.formNhapNgay  ?? 0 },
+      { label: 'UV Net',       a: a.uvNetNgay     ?? 0, b: b.uvNetNgay     ?? 0 },
+      { label: 'HL Net',       a: a.hlNetNgay     ?? 0, b: b.hlNetNgay     ?? 0 },
+      { label: 'Trung Net',    a: a.trungNetNgay  ?? 0, b: b.trungNetNgay  ?? 0 },
+      { label: 'Lũy kế tháng', a: null, b: null, isSeparator: true },
+      { label: 'Form Nhập',    a: a.formNhapThang ?? 0, b: b.formNhapThang ?? 0 },
+      { label: 'UV Net',       a: a.uvNetThang    ?? 0, b: b.uvNetThang    ?? 0 },
+      { label: 'HL Net',       a: a.hlNetThang    ?? 0, b: b.hlNetThang    ?? 0 },
+      { label: 'Trung Net',    a: a.trungNetThang ?? 0, b: b.trungNetThang ?? 0 },
+      { label: 'Ký HĐ',       a: a.kyHDThang     ?? 0, b: b.kyHDThang     ?? 0 },
+      { label: 'Duyệt',        a: a.duyetThang    ?? 0, b: b.duyetThang    ?? 0 },
+    ]
+  }, [tabs, compareA, compareB])
+
   // Alias — JSX bên dưới không cần sửa
   const activeTab       = tabs.find(t => t.id === activeTabId) ?? tabs[0]
   const selectedDate    = activeTab.date
@@ -345,6 +375,11 @@ export default function TuyenDungPage() {
         <button onClick={addTab}
           className="px-2.5 py-1.5 text-slate-400 hover:text-blue-600 hover:bg-white/60 rounded-lg transition text-base font-bold leading-none"
           title="Mở tab mới">+</button>
+        {tabs.length >= 2 && (
+          <button onClick={() => { setCompareA(tabs[0].id); setCompareB(tabs[1].id); setCompareOpen(true) }}
+            className="ml-auto px-3 py-1.5 text-xs font-medium text-violet-600 hover:bg-violet-50 rounded-lg transition whitespace-nowrap no-print"
+            title="So sánh 2 tab">⚖️ So sánh</button>
+        )}
       </div>
 
       {/* ── HEADER ── */}
@@ -383,6 +418,13 @@ export default function TuyenDungPage() {
             {refreshing ? '...' : 'Làm mới'}
           </button>
         </div>
+      </div>
+      {/* Export buttons */}
+      <div className="flex justify-end no-print">
+        <ExportButtons
+          disabled={!data || loading}
+          onExcelClick={() => data && exportBCNgayExcel(data, selectedDate)}
+        />
       </div>
 
       {loading && <Spinner />}
@@ -772,6 +814,19 @@ export default function TuyenDungPage() {
           )}
 
         </>
+      )}
+      {compareOpen && (
+        <ComparePanel
+          tabs={tabs.map(t => ({
+            id: t.id,
+            label: new Date(t.date + 'T00:00:00').toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit' }),
+            hasData: !!t.data
+          }))}
+          tabAId={compareA} tabBId={compareB}
+          onTabAChange={setCompareA} onTabBChange={setCompareB}
+          rows={compareRows}
+          onClose={() => setCompareOpen(false)}
+        />
       )}
     </div>
   )
