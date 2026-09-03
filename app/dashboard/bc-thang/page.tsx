@@ -55,9 +55,7 @@ export default function BCThangPage() {
   // Alias — JSX bên dưới không cần sửa
   const activeTab  = tabs.find(t => t.id === activeTabId) ?? tabs[0]
   const month      = activeTab.month
-  const setMonth   = (m: number) => updateTab(activeTabId, { month: m })
   const year       = activeTab.year
-  const setYear    = (y: number) => updateTab(activeTabId, { year: y })
   const data       = activeTab.data
   const loading    = activeTab.loading
   const error      = activeTab.error
@@ -146,13 +144,13 @@ export default function BCThangPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <select value={month} onChange={e => setMonth(Number(e.target.value))}
+          <select value={month} onChange={e => { const m = Number(e.target.value); updateTab(activeTabId, { month: m }); fetchData(m, activeTab.year, activeTabId) }}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             {Array.from({length:12},(_,i)=>i+1).map(m=>(
               <option key={m} value={m}>Tháng {m}</option>
             ))}
           </select>
-          <select value={year} onChange={e => setYear(Number(e.target.value))}
+          <select value={year} onChange={e => { const y = Number(e.target.value); updateTab(activeTabId, { year: y }); fetchData(activeTab.month, y, activeTabId) }}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             {[2024,2025,2026,2027].map(y=><option key={y} value={y}>{y}</option>)}
           </select>
