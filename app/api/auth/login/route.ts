@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { createSession, COOKIE_NAME } from '@/lib/auth'
 import bcrypt from 'bcryptjs'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
+)
 
 export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json()
 
-    // Validate input
     if (!username || !password) {
       return NextResponse.json(
         { error: 'Vui lòng nhập tên đăng nhập và mật khẩu' },
@@ -15,7 +19,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Tìm user trong Supabase
     const { data: user, error } = await supabase
       .from('users')
       .select('*')
@@ -30,7 +33,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Kiểm tra mật khẩu (đã mã hóa bằng bcrypt)
     const passwordMatch = await bcrypt.compare(password, user.password_hash)
 
     if (!passwordMatch) {
@@ -40,7 +42,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Tạo session token
     const token = await createSession({
       id: user.id,
       username: user.username,
@@ -48,7 +49,6 @@ export async function POST(request: NextRequest) {
       role: user.role,
     })
 
-    // Ghi cookie và trả về thông tin user
     const response = NextResponse.json({
       success: true,
       user: {
@@ -60,10 +60,10 @@ export async function POST(request: NextRequest) {
     })
 
     response.cookies.set(COOKIE_NAME, token, {
-      httpOnly: true,       // Không cho JS đọc (bảo mật)
-      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      secure: true,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 8, // 8 giờ
+      maxAge: 60 * 60 * 8,
       path: '/',
     })
 
