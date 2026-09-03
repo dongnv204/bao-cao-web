@@ -592,11 +592,6 @@ export default function TuyenDungPage() {
               </div>
             </section>
           )}
-        </>
-      )}
-    </div>
-  )
-}
           {/* ══════════════════════════════════════════════
               BẢNG 4 — PHÂN BỔ UV THEO MÃ TRANG
           ══════════════════════════════════════════════ */}
@@ -671,3 +666,8 @@ export default function TuyenDungPage() {
             </section>
           )}
 
+        </>
+      )}
+    </div>
+  )
+}
