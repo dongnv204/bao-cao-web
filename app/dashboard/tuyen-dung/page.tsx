@@ -384,7 +384,7 @@ export default function TuyenDungPage() {
               {b2.nguon.length > 0 && (
                 <div className="border-t border-slate-200 p-4">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Nguồn</p>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto" style={{ maxWidth: '50%' }}>
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-slate-100 text-slate-600">
@@ -455,7 +455,7 @@ export default function TuyenDungPage() {
           <section>
             <SectionTitle color="bg-blue-800" text={`BẢNG 3 — CHỈ SỐ UV CÁC NGÀY TRONG THÁNG ${mY}`} />
             <div className="border border-slate-200 rounded-b-xl bg-white shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" style={{ maxWidth: '50%' }}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-800 text-white text-xs">
@@ -534,6 +534,70 @@ export default function TuyenDungPage() {
           </section>
 
           {/* ══════════════════════════════════════════════
+              BẢNG 5 — THỐNG KÊ UV THEO NGUỒN (TỔNG THÁNG)
+          ══════════════════════════════════════════════ */}
+          {b5.length > 0 && b5Total && (
+            <section>
+              <SectionTitle color="bg-teal-800" text={`BẢNG 5 — THỐNG KÊ UV THEO NGUỒN — Tháng ${mY}`} />
+              <div className="border border-slate-200 rounded-b-xl bg-white shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-teal-900 text-xs">
+                        <Th>Chỉ Số</Th>
+                        {b5.map((r, i) => {
+                          const HC = ['#60a5fa','#34d399','#fbbf24','#c084fc','#f87171','#a78bfa']
+                          return <Th key={i} right><span style={{ color: HC[i % HC.length] }}>{r.ten}</span></Th>
+                        })}
+                        <Th right><span style={{ color: '#fcd34d' }}>Tổng</span></Th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {[
+                        { label: 'Thô (Form Nhập)', key: 'tho', color: 'text-orange-600' },
+                        { label: 'Lọc (UV Lọc)',    key: 'loc', color: '' },
+                        { label: 'Net (UV Net)',     key: 'net', color: 'text-teal-700' },
+                        { label: 'HL Net',           key: 'hl',  color: 'text-green-700 font-semibold' },
+                        { label: 'Trùng Net',        key: 'tr',  color: 'text-purple-700 font-semibold' },
+                      ].map(row => (
+                        <tr key={row.key} className="hover:bg-teal-50">
+                          <Td bold>{row.label}</Td>
+                          {b5.map((r, i) => (
+                            <Td key={i} right className={row.color}>
+                              {num((r as any)[row.key])}
+                            </Td>
+                          ))}
+                          <Td right bold className={row.color}>
+                            {num((b5Total as any)[row.key])}
+                          </Td>
+                        </tr>
+                      ))}
+                      <tr className="bg-orange-50 hover:bg-orange-100">
+                        <Td bold className="text-orange-700">% HL</Td>
+                        {b5.map((r, i) => (
+                          <Td key={i} right className="text-orange-600 font-bold">{fmtPct(r.pctHL)}</Td>
+                        ))}
+                        <Td right bold className="text-orange-600">{fmtPct(b5Total.pctHL)}</Td>
+                      </tr>
+                      <tr className="hover:bg-slate-50">
+                        <Td bold className="text-slate-500">% Hao Hụt</Td>
+                        {b5.map((r, i) => (
+                          <Td key={i} right className="text-slate-500">{fmtPct(r.pctHH)}</Td>
+                        ))}
+                        <Td right bold className="text-slate-600">{fmtPct(b5Total.pctHH)}</Td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+          {/* ══════════════════════════════════════════════
               BẢNG 4 — PHÂN BỔ UV THEO MÃ TRANG
           ══════════════════════════════════════════════ */}
           {b4.length > 0 && (
@@ -607,64 +671,3 @@ export default function TuyenDungPage() {
             </section>
           )}
 
-          {/* ══════════════════════════════════════════════
-              BẢNG 5 — THỐNG KÊ UV THEO NGUỒN (TỔNG THÁNG)
-          ══════════════════════════════════════════════ */}
-          {b5.length > 0 && b5Total && (
-            <section>
-              <SectionTitle color="bg-teal-800" text={`BẢNG 5 — THỐNG KÊ UV THEO NGUỒN — Tháng ${mY}`} />
-              <div className="border border-slate-200 rounded-b-xl bg-white shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-teal-900 text-white text-xs">
-                        <Th>Chỉ Số</Th>
-                        {b5.map((r, i) => <Th key={i} right>{r.ten}</Th>)}
-                        <Th right>Tổng</Th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {[
-                        { label: 'Thô (Form Nhập)', key: 'tho', color: 'text-orange-600' },
-                        { label: 'Lọc (UV Lọc)',    key: 'loc', color: '' },
-                        { label: 'Net (UV Net)',     key: 'net', color: 'text-teal-700' },
-                        { label: 'HL Net',           key: 'hl',  color: 'text-green-700 font-semibold' },
-                        { label: 'Trùng Net',        key: 'tr',  color: 'text-purple-700 font-semibold' },
-                      ].map(row => (
-                        <tr key={row.key} className="hover:bg-teal-50">
-                          <Td bold>{row.label}</Td>
-                          {b5.map((r, i) => (
-                            <Td key={i} right className={row.color}>
-                              {num((r as any)[row.key])}
-                            </Td>
-                          ))}
-                          <Td right bold className={row.color}>
-                            {num((b5Total as any)[row.key])}
-                          </Td>
-                        </tr>
-                      ))}
-                      <tr className="bg-orange-50 hover:bg-orange-100">
-                        <Td bold className="text-orange-700">% HL</Td>
-                        {b5.map((r, i) => (
-                          <Td key={i} right className="text-orange-600 font-bold">{fmtPct(r.pctHL)}</Td>
-                        ))}
-                        <Td right bold className="text-orange-600">{fmtPct(b5Total.pctHL)}</Td>
-                      </tr>
-                      <tr className="hover:bg-slate-50">
-                        <Td bold className="text-slate-500">% Hao Hụt</Td>
-                        {b5.map((r, i) => (
-                          <Td key={i} right className="text-slate-500">{fmtPct(r.pctHH)}</Td>
-                        ))}
-                        <Td right bold className="text-slate-600">{fmtPct(b5Total.pctHH)}</Td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
-          )}
-        </>
-      )}
-    </div>
-  )
-}
