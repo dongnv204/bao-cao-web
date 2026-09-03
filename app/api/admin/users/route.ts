@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { createSession, COOKIE_NAME } from '@/lib/auth'
+import { verifySession } from '@/lib/auth'
 import bcrypt from 'bcryptjs'
 
+// Dùng service role key để bypass RLS
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
 )
-import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
-  // Chỉ admin mới được tạo user
   const session = await verifySession()
   if (!session || session.role !== 'admin') {
     return NextResponse.json({ error: 'Không có quyền' }, { status: 403 })
@@ -19,7 +18,6 @@ export async function POST(request: NextRequest) {
   try {
     const { username, full_name, password, role } = await request.json()
 
-    // Validate
     if (!username || !full_name || !password || !role) {
       return NextResponse.json({ error: 'Vui lòng điền đầy đủ thông tin' }, { status: 400 })
     }
@@ -30,10 +28,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Role không hợp lệ' }, { status: 400 })
     }
 
-    // Mã hoá mật khẩu bằng bcrypt (salt rounds = 12)
     const password_hash = await bcrypt.hash(password, 12)
 
-    // Lưu vào Supabase
     const { error } = await supabase.from('users').insert({
       username: username.trim().toLowerCase(),
       full_name: full_name.trim(),
