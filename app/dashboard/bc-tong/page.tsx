@@ -63,6 +63,14 @@ export default function BCTongPage() {
     finally { setLoading(false) }
   }, [month, year])
 
+  const [refreshing, setRefreshing] = useState(false)
+  const refreshData = async () => {
+    setRefreshing(true)
+    await fetch(`/api/revalidate?tag=bc-tong`, { method: 'POST' }).catch(() => {})
+    await fetchData()
+    setRefreshing(false)
+  }
+
   useEffect(() => { fetchData() }, [fetchData])
 
   const tq = data?.tongQuan
@@ -93,6 +101,11 @@ export default function BCTongPage() {
           <button onClick={fetchData} disabled={loading}
             className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition">
             {loading ? 'Đang tải...' : 'Xem'}
+          </button>
+          <button onClick={refreshData} disabled={loading || refreshing}
+            title="Xoá cache và tải dữ liệu mới nhất từ Google Sheets"
+            className="px-3 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm hover:bg-slate-100 disabled:opacity-50 transition">
+            {refreshing ? '...' : '🔄'}
           </button>
         </div>
       </div>

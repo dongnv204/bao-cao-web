@@ -221,6 +221,15 @@ export default function TuyenDungPage() {
 
   useEffect(() => { loadData(selectedDate) }, [])
 
+  // Xoá cache server rồi tải lại dữ liệu mới nhất
+  const [refreshing, setRefreshing] = useState(false)
+  const refreshData = async () => {
+    setRefreshing(true)
+    await fetch(`/api/revalidate?tag=bc-ngay`, { method: 'POST' }).catch(() => {})
+    await loadData(selectedDate)
+    setRefreshing(false)
+  }
+
   const b1  = data?.bang1
   const b2  = data?.bang2
   const b3  = data?.bang3 ?? []
@@ -276,6 +285,14 @@ export default function TuyenDungPage() {
               : '🔄'
             }
             Tải dữ liệu
+          </button>
+          <button
+            onClick={refreshData} disabled={loading || refreshing}
+            title="Xoá cache và lấy dữ liệu mới nhất từ Google Sheets"
+            className="bg-white/15 border border-white/30 text-white text-xs font-medium px-3 py-2 rounded-lg
+                       hover:bg-white/25 transition disabled:opacity-50"
+          >
+            {refreshing ? '...' : 'Làm mới'}
           </button>
         </div>
       </div>
