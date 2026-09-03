@@ -85,11 +85,11 @@ const ADMIN_ITEMS = [
   },
 ]
 
-// Badge hiển thị role
+// Badge hiển thị role — theme sáng
 const ROLE_LABELS: Record<string, { label: string; color: string }> = {
-  admin:   { label: 'Admin',   color: 'bg-red-500/20 text-red-400 border-red-500/30' },
-  manager: { label: 'Manager', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-  viewer:  { label: 'Viewer',  color: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
+  admin:   { label: 'Admin',   color: 'bg-red-50 text-red-600 border-red-200' },
+  manager: { label: 'Manager', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  viewer:  { label: 'Viewer',  color: 'bg-slate-100 text-slate-600 border-slate-200' },
 }
 
 export default function Sidebar({ user }: SidebarProps) {
@@ -106,10 +106,10 @@ export default function Sidebar({ user }: SidebarProps) {
   const visibleNav = NAV_ITEMS.filter(item => item.roles.includes(user.role))
 
   return (
-    <aside className="fixed left-0 top-0 w-64 h-screen bg-slate-900 border-r border-slate-800
-                      flex flex-col z-40">
+    <aside className="fixed left-0 top-0 w-64 h-screen bg-white border-r border-slate-200
+                      flex flex-col z-40 shadow-sm shadow-slate-200/50">
       {/* Header sidebar */}
-      <div className="px-5 py-6 border-b border-slate-800">
+      <div className="px-5 py-6 border-b border-slate-200">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,15 +118,15 @@ export default function Sidebar({ user }: SidebarProps) {
             </svg>
           </div>
           <div>
-            <p className="text-white font-semibold text-sm leading-none">Báo Cáo Nội Bộ</p>
-            <p className="text-slate-500 text-xs mt-0.5">Dashboard</p>
+            <p className="text-slate-900 font-semibold text-sm leading-none">Báo Cáo Nội Bộ</p>
+            <p className="text-slate-400 text-xs mt-0.5">Dashboard</p>
           </div>
         </div>
       </div>
 
       {/* Menu chính */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <p className="px-2 text-xs font-medium text-slate-600 uppercase tracking-wider mb-3">
+        <p className="px-2 text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">
           Báo cáo
         </p>
 
@@ -140,7 +140,7 @@ export default function Sidebar({ user }: SidebarProps) {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition
                 ${isActive
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                 }`}
             >
               {item.icon}
@@ -153,7 +153,7 @@ export default function Sidebar({ user }: SidebarProps) {
         {user.role === 'admin' && (
           <>
             <div className="pt-4 pb-2">
-              <p className="px-2 text-xs font-medium text-slate-600 uppercase tracking-wider">
+              <p className="px-2 text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Quản trị
               </p>
             </div>
@@ -166,7 +166,7 @@ export default function Sidebar({ user }: SidebarProps) {
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition
                     ${isActive
                       ? 'bg-blue-600 text-white'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                     }`}
                 >
                   {item.icon}
@@ -179,16 +179,16 @@ export default function Sidebar({ user }: SidebarProps) {
       </nav>
 
       {/* User info + logout */}
-      <div className="px-3 py-4 border-t border-slate-800">
+      <div className="px-3 py-4 border-t border-slate-200">
         <div className="flex items-center gap-3 px-3 py-2 mb-2">
           {/* Avatar */}
-          <div className="w-8 h-8 bg-blue-600/20 rounded-full flex items-center justify-center shrink-0">
-            <span className="text-blue-400 text-xs font-bold">
+          <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center shrink-0">
+            <span className="text-blue-600 text-xs font-bold">
               {user.full_name.charAt(0).toUpperCase()}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-medium truncate">{user.full_name}</p>
+            <p className="text-slate-900 text-sm font-medium truncate">{user.full_name}</p>
             <span className={`inline-block text-xs px-1.5 py-0.5 rounded border ${roleBadge.color}`}>
               {roleBadge.label}
             </span>
@@ -199,7 +199,7 @@ export default function Sidebar({ user }: SidebarProps) {
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm
-                     text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                     text-slate-500 hover:text-red-600 hover:bg-red-50 transition"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}

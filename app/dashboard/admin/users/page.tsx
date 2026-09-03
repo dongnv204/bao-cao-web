@@ -13,8 +13,8 @@ export default async function AdminUsersPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Quản Lý Người Dùng</h1>
-        <p className="text-slate-400 text-sm mt-1">Tạo, chỉnh sửa và phân quyền tài khoản</p>
+        <h1 className="text-2xl font-bold text-slate-900">Quản Lý Người Dùng</h1>
+        <p className="text-slate-500 text-sm mt-1">Tạo, chỉnh sửa và phân quyền tài khoản</p>
       </div>
       <UserManagement />
     </div>

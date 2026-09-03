@@ -8,7 +8,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect('/')
 
   return (
-    <div className="flex min-h-screen bg-slate-950">
+    <div className="flex min-h-screen bg-slate-50">
       {/* Sidebar cố định bên trái */}
       <Sidebar user={user} />
 

@@ -19,9 +19,9 @@ const ROLE_OPTIONS = [
 ]
 
 const ROLE_BADGE: Record<string, string> = {
-  admin:   'bg-red-500/20 text-red-400 border-red-500/30',
-  manager: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  viewer:  'bg-slate-500/20 text-slate-400 border-slate-500/30',
+  admin:   'bg-red-50 text-red-600 border-red-200',
+  manager: 'bg-amber-50 text-amber-700 border-amber-200',
+  viewer:  'bg-slate-100 text-slate-600 border-slate-200',
 }
 
 export default function UserManagement() {
@@ -89,8 +89,8 @@ export default function UserManagement() {
       {/* Thông báo */}
       {msg && (
         <div className={`px-4 py-3 rounded-xl text-sm
-          ${msg.startsWith('✅') ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
-                                 : 'bg-red-500/10 border border-red-500/30 text-red-400'}`}>
+          ${msg.startsWith('✅') ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
+                                 : 'bg-red-50 border border-red-200 text-red-600'}`}>
           {msg}
         </div>
       )}
@@ -111,33 +111,33 @@ export default function UserManagement() {
 
       {/* Form tạo user */}
       {showForm && (
-        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6">
-          <h3 className="text-white font-semibold mb-5">Tạo tài khoản mới</h3>
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-slate-900 font-semibold mb-5">Tạo tài khoản mới</h3>
           <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-slate-400 mb-1.5">Tên đăng nhập</label>
+              <label className="block text-sm text-slate-500 mb-1.5">Tên đăng nhập</label>
               <input
                 value={form.username}
                 onChange={e => setForm(f => ({ ...f, username: e.target.value.toLowerCase() }))}
                 placeholder="vd: nhansu01"
                 required
-                className="w-full bg-slate-700 border border-slate-600 text-white text-sm
-                           rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 transition"
+                className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm
+                           rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 focus:bg-white transition"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1.5">Họ và tên</label>
+              <label className="block text-sm text-slate-500 mb-1.5">Họ và tên</label>
               <input
                 value={form.full_name}
                 onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
                 placeholder="vd: Nguyễn Văn A"
                 required
-                className="w-full bg-slate-700 border border-slate-600 text-white text-sm
-                           rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 transition"
+                className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm
+                           rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 focus:bg-white transition"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1.5">Mật khẩu</label>
+              <label className="block text-sm text-slate-500 mb-1.5">Mật khẩu</label>
               <input
                 type="password"
                 value={form.password}
@@ -145,17 +145,17 @@ export default function UserManagement() {
                 placeholder="Tối thiểu 8 ký tự"
                 required
                 minLength={8}
-                className="w-full bg-slate-700 border border-slate-600 text-white text-sm
-                           rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 transition"
+                className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm
+                           rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 focus:bg-white transition"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1.5">Quyền</label>
+              <label className="block text-sm text-slate-500 mb-1.5">Quyền</label>
               <select
                 value={form.role}
                 onChange={e => setForm(f => ({ ...f, role: e.target.value as typeof form.role }))}
-                className="w-full bg-slate-700 border border-slate-600 text-white text-sm
-                           rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 transition"
+                className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm
+                           rounded-xl px-3 py-2.5 outline-none focus:border-blue-500 focus:bg-white transition"
               >
                 {ROLE_OPTIONS.map(r => (
                   <option key={r.value} value={r.value}>{r.label}</option>
@@ -166,7 +166,7 @@ export default function UserManagement() {
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2 text-slate-400 hover:text-white text-sm transition"
+                className="px-4 py-2 text-slate-500 hover:text-slate-900 text-sm transition"
               >
                 Huỷ
               </button>
@@ -184,7 +184,7 @@ export default function UserManagement() {
       )}
 
       {/* Danh sách users */}
-      <div className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
         {loading ? (
           <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
             Đang tải...
@@ -192,7 +192,7 @@ export default function UserManagement() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-700">
+              <tr className="border-b border-slate-200">
                 <th className="text-left py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wide">Tên đăng nhập</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wide">Họ tên</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-slate-400 uppercase tracking-wide">Quyền</th>
@@ -202,9 +202,9 @@ export default function UserManagement() {
             </thead>
             <tbody>
               {users.map(u => (
-                <tr key={u.id} className="border-b border-slate-800 hover:bg-slate-800/50">
-                  <td className="py-3 px-4 font-mono text-white">{u.username}</td>
-                  <td className="py-3 px-4 text-slate-300">{u.full_name}</td>
+                <tr key={u.id} className="border-b border-slate-100 hover:bg-slate-50">
+                  <td className="py-3 px-4 font-mono text-slate-900">{u.username}</td>
+                  <td className="py-3 px-4 text-slate-600">{u.full_name}</td>
                   <td className="py-3 px-4">
                     <span className={`inline-block text-xs px-2 py-0.5 rounded border ${ROLE_BADGE[u.role]}`}>
                       {u.role}
@@ -213,8 +213,8 @@ export default function UserManagement() {
                   <td className="py-3 px-4">
                     <span className={`inline-block text-xs px-2 py-0.5 rounded
                       ${u.active
-                        ? 'bg-emerald-500/20 text-emerald-400'
-                        : 'bg-slate-700 text-slate-500'}`}>
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'bg-slate-100 text-slate-500'}`}>
                       {u.active ? 'Hoạt động' : 'Bị khóa'}
                     </span>
                   </td>
@@ -223,8 +223,8 @@ export default function UserManagement() {
                       onClick={() => toggleActive(u.id, u.active)}
                       className={`text-xs px-3 py-1 rounded-lg transition
                         ${u.active
-                          ? 'text-red-400 hover:bg-red-500/10'
-                          : 'text-emerald-400 hover:bg-emerald-500/10'}`}
+                          ? 'text-red-600 hover:bg-red-50'
+                          : 'text-emerald-700 hover:bg-emerald-50'}`}
                     >
                       {u.active ? 'Khóa' : 'Mở khóa'}
                     </button>
@@ -233,7 +233,7 @@ export default function UserManagement() {
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-slate-500 text-sm">
+                  <td colSpan={5} className="py-10 text-center text-slate-400 text-sm">
                     Chưa có người dùng nào. Tạo tài khoản đầu tiên!
                   </td>
                 </tr>

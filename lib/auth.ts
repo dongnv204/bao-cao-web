@@ -25,7 +25,7 @@ export async function createSession(user: {
 
 // Xác minh token từ cookie
 export async function verifySession() {
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const token = cookieStore.get(COOKIE_NAME)?.value
 
   if (!token) return null
