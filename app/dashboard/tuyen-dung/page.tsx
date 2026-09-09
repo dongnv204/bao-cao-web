@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTabsStore } from '../tabs-store'
 import { useMemo, useState as useLocalState } from 'react'
 import ExportButtons from '@/components/ExportButtons'
+import { cacheGet, cacheSet, cacheClear } from '@/lib/cache'
+import { DailyTrendChart } from '@/components/charts/RecruitChart'
 import ComparePanel, { CompareRow } from '@/components/ComparePanel'
 import { exportBCNgayExcel } from '@/lib/export-utils'
 
@@ -272,16 +274,20 @@ export default function TuyenDungPage() {
   })
 
   // Tải dữ liệu cho 1 tab cụ thể
-  const loadData = useCallback(async (dateStr: string, tabId: string) => {
+  const loadData = useCallback(async (dateStr: string, tabId: string, skipCache = false) => {
     updateTab(tabId, { loading: true, error: '' })
     try {
+      if (!skipCache) {
+        const cached = cacheGet<ReportData>(`bc-ngay:${dateStr}`)
+        if (cached) { updateTab(tabId, { data: cached }); return }
+      }
       const d = new Date(dateStr + 'T00:00:00')
       const res = await fetch(
         `/api/reports/tuyen-dung?day=${d.getDate()}&month=${d.getMonth()+1}&year=${d.getFullYear()}`
       )
       const json = await res.json()
       if (!res.ok) { updateTab(tabId, { data: null, error: json.error || 'Lỗi không xác định' }) }
-      else updateTab(tabId, { data: json })
+      else { cacheSet(`bc-ngay:${dateStr}`, json); updateTab(tabId, { data: json }) }
     } catch { updateTab(tabId, { data: null, error: 'Lỗi kết nối máy chủ' }) }
     finally { updateTab(tabId, { loading: false }) }
   }, [updateTab])
@@ -299,10 +305,28 @@ export default function TuyenDungPage() {
   const refreshData = async () => {
     const id = activeTabId
     updateTab(id, { refreshing: true })
+    cacheClear(`bc-ngay:${activeTab.date}`)
     await fetch(`/api/revalidate?tag=bc-ngay`, { method: 'POST' }).catch(() => {})
-    await loadData(activeTab.date, id)
+    await loadData(activeTab.date, id, true)
     updateTab(id, { refreshing: false })
   }
+
+  // Deep link — đọc ?date=YYYY-MM-DD từ URL khi load
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    const dt = p.get('date')
+    if (dt && /^\d{4}-\d{2}-\d{2}$/.test(dt)) {
+      updateTab(activeTabId, { date: dt })
+      loadData(dt, activeTabId)
+    }
+  }, [])
+
+  // Deep link — cập nhật URL khi ngày thay đổi
+  useEffect(() => {
+    const u = new URLSearchParams()
+    u.set('date', selectedDate)
+    window.history.replaceState(null, '', '?' + u.toString())
+  }, [selectedDate])
 
   // Thêm tab mới (mặc định ngày hôm nay)
   const addTab = () => {
@@ -680,7 +704,19 @@ export default function TuyenDungPage() {
             </div>
           </section>
 
-          {/* ══════════════════════════════════════════════
+          {/* DailyTrendChart — biểu đồ xu hướng theo ngày */}
+          {b3.filter(r => !r.isTotal).length > 1 && (
+            <section className="mt-2">
+              <DailyTrendChart data={b3.filter(r => !r.isTotal).map(r => ({
+                ngay: String(r.ngay),
+                uvNet: r.uvNet,
+                hlNet: r.hlNet,
+                trungNet: r.trungNet,
+              }))} />
+            </section>
+          )}
+
+                    {/* ══════════════════════════════════════════════
               BẢNG 5 — THỐNG KÊ UV THEO NGUỒN (TỔNG THÁNG)
           ══════════════════════════════════════════════ */}
           {b5.length > 0 && b5Total && (

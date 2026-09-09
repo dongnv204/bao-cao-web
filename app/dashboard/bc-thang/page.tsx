@@ -6,6 +6,8 @@ import { useMemo, useState as useLocalState } from 'react'
 import ExportButtons from '@/components/ExportButtons'
 import ComparePanel, { CompareRow } from '@/components/ComparePanel'
 import { exportBCThangExcel } from '@/lib/export-utils'
+import { cacheGet, cacheSet, cacheClear } from '@/lib/cache'
+import { FunnelChart, WeeklyChart, MarketChart } from '@/components/charts/RecruitChart'
 
 // ── Types ──────────────────────────────────────────────────────────────
 interface TongQuan {
@@ -98,23 +100,31 @@ export default function BCThangPage() {
   const refreshing = activeTab.refreshing
 
   // Tải dữ liệu cho 1 tab cụ thể
-  const fetchData = useCallback(async (m: number, y: number, tabId: string) => {
+  const fetchData = useCallback(async (m: number, y: number, tabId: string, skipCache = false) => {
+    // Kiểm tra cache 30 phút trước khi fetch
+    if (!skipCache) {
+      const cached = cacheGet<BCThangData>(`bc-thang:${m}:${y}`)
+      if (cached) { updateTab(tabId, { data: cached, loading: false, error: '' }); return }
+    }
     updateTab(tabId, { loading: true, error: '', data: null })
     try {
       const res = await fetch(`/api/reports/bc-thang?month=${m}&year=${y}`)
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`) }
-      updateTab(tabId, { data: await res.json() })
-    } catch (e: any) { updateTab(tabId, { error: e.message }) }
+      const d = await res.json()
+      cacheSet(`bc-thang:${m}:${y}`, d)
+      updateTab(tabId, { data: d })
+    } catch (e: any) { updateTab(tabId, { error: (e as Error).message }) }
     finally { updateTab(tabId, { loading: false }) }
   }, [updateTab])
 
-  // Xoá cache server rồi tải lại
+  // Xoá cache client + server rồi tải lại
   const refreshData = async () => {
     const id = activeTabId
     const t  = activeTab
     updateTab(id, { refreshing: true })
+    cacheClear(`bc-thang:${t.month}:${t.year}`)
     await fetch(`/api/revalidate?tag=bc-thang`, { method: 'POST' }).catch(() => {})
-    await fetchData(t.month, t.year, id)
+    await fetchData(t.month, t.year, id, true)
     updateTab(id, { refreshing: false })
   }
 
@@ -126,6 +136,31 @@ export default function BCThangPage() {
     const maxId = Math.max(...tabs.map(t => Number(t.id)))
     if (maxId >= nextId.current) nextId.current = maxId + 1
   }, []) // chỉ chạy 1 lần lúc mount
+
+  // Deep link — đọc ?month=X&year=Y từ URL khi mount
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search)
+      const m = Number(p.get('month')), y = Number(p.get('year'))
+      if (m >= 1 && m <= 12 && y >= 2020) {
+        updateTab('1', { month: m, year: y })
+        fetchData(m, y, '1')
+        return
+      }
+    } catch {}
+  }, []) // eslint-disable-line
+
+  // Cập nhật URL khi active tab thay đổi
+  useEffect(() => {
+    const t = tabs.find(x => x.id === activeTabId)
+    if (!t) return
+    try {
+      const u = new URL(window.location.href)
+      u.searchParams.set('month', String(t.month))
+      u.searchParams.set('year',  String(t.year))
+      window.history.replaceState(null, '', u.toString())
+    } catch {}
+  }, [activeTabId, tabs.map(t => `${t.month}-${t.year}`).join()])
 
   // Tải lần đầu — bỏ qua nếu tab đã có data (khôi phục từ store)
   useEffect(() => {
@@ -294,6 +329,32 @@ export default function BCThangPage() {
           </Section>
 
           {/* ── Bảng 2 — Phễu chuyển đổi ─────────────────────────── */}
+          {/* ── Biểu đồ phân tích ─────────────────────────────────────── */}
+          {(data.pheu?.length || data.weeklyHL?.length || data.byThiTruong?.length) && (
+            <Section title="BIỂU ĐỒ PHÂN TÍCH">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {data.pheu && data.pheu.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Phễu tuyển dụng</p>
+                    <FunnelChart data={data.pheu} />
+                  </div>
+                )}
+                {data.weeklyHL && data.weeklyHL.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">HL Net theo tuần</p>
+                    <WeeklyChart data={data.weeklyHL} />
+                  </div>
+                )}
+              </div>
+              {data.byThiTruong && data.byThiTruong.length > 0 && (
+                <div className="mt-5">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">UV Net theo thị trường</p>
+                  <MarketChart data={data.byThiTruong} />
+                </div>
+              )}
+            </Section>
+          )}
+
           {data.pheu && data.pheu.length > 0 && (
             <Section title="BẢNG 2 — TỔNG SỐ LƯỢNG QUA CÁC KHÂU & TỶ LỆ CHUYỂN ĐỔI (UV Hợp Lệ Net)">
               <div className="overflow-x-auto">

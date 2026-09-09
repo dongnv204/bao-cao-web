@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTheme } from '@/components/ThemeProvider'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 
@@ -101,6 +102,7 @@ export default function Sidebar({ user }: SidebarProps) {
   const router      = useRouter()
   const roleBadge   = ROLE_LABELS[user.role] || ROLE_LABELS.viewer
   const [open, setOpen] = useState(false)  // mobile sidebar state
+  const { theme, toggle } = useTheme()
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -131,12 +133,30 @@ export default function Sidebar({ user }: SidebarProps) {
             <p className="text-slate-400 text-xs mt-0.5">Dashboard</p>
           </div>
         </div>
-        {/* Close button — mobile only */}
-        <button onClick={() => setOpen(false)} className="md:hidden text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        {/* Theme toggle + Close button */}
+        <div className="flex items-center gap-1">
+          {/* Nút chuyển sáng/tối */}
+          <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
+            <button
+              onClick={() => theme === 'dark' && toggle()}
+              title="Giao diện sáng"
+              className={`w-7 h-7 flex items-center justify-center text-sm transition
+                ${theme === 'light' ? 'bg-blue-50' : 'hover:bg-slate-100 text-slate-500'}`}
+            >☀️</button>
+            <button
+              onClick={() => theme === 'light' && toggle()}
+              title="Giao diện tối"
+              className={`w-7 h-7 flex items-center justify-center text-sm transition
+                ${theme === 'dark' ? 'bg-slate-700 text-slate-100' : 'hover:bg-slate-100 text-slate-400'}`}
+            >🌙</button>
+          </div>
+          {/* Nút đóng sidebar — chỉ mobile */}
+          <button onClick={() => setOpen(false)} className="md:hidden text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Nav */}

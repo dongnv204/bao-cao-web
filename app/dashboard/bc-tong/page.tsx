@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTabsStore } from '../tabs-store'
 import { useMemo, useState as useLocalState } from 'react'
 import ExportButtons from '@/components/ExportButtons'
+import { cacheGet, cacheSet, cacheClear } from '@/lib/cache'
+import { GroupTotalChart, MonthTrendChart } from '@/components/charts/RecruitChart'
 import ComparePanel, { CompareRow } from '@/components/ComparePanel'
 import { exportBCTongExcel } from '@/lib/export-utils'
 
@@ -123,12 +125,18 @@ export default function BCTongPage() {
   const refreshing = activeTab.refreshing
 
   // Tải dữ liệu cho 1 tab cụ thể
-  const fetchData = useCallback(async (m: number, y: number, tabId: string) => {
+  const fetchData = useCallback(async (m: number, y: number, tabId: string, skipCache = false) => {
     updateTab(tabId, { loading: true, error: '', data: null })
     try {
+      if (!skipCache) {
+        const cached = cacheGet<BCTongData>(`bc-tong:${m}:${y}`)
+        if (cached) { updateTab(tabId, { data: cached }); return }
+      }
       const res = await fetch(`/api/reports/bc-tong?month=${m}&year=${y}`)
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`) }
-      updateTab(tabId, { data: await res.json() })
+      const d = await res.json()
+      cacheSet(`bc-tong:${m}:${y}`, d)
+      updateTab(tabId, { data: d })
     } catch (e: any) { updateTab(tabId, { error: e.message }) }
     finally { updateTab(tabId, { loading: false }) }
   }, [updateTab])
@@ -137,8 +145,9 @@ export default function BCTongPage() {
     const id = activeTabId
     const t  = activeTab
     updateTab(id, { refreshing: true })
+    cacheClear(`bc-tong:${t.month}:${t.year}`)
     await fetch(`/api/revalidate?tag=bc-tong`, { method: 'POST' }).catch(() => {})
-    await fetchData(t.month, t.year, id)
+    await fetchData(t.month, t.year, id, true)
     updateTab(id, { refreshing: false })
   }
 
@@ -156,6 +165,23 @@ export default function BCTongPage() {
     const first = tabs[0]
     if (!first.data && !first.loading) fetchData(first.month, first.year, first.id)
   }, [])
+
+  // Deep link — đọc ?month=&year= từ URL khi load
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    const m = Number(p.get('month')), y = Number(p.get('year'))
+    if (m >= 1 && m <= 12 && y >= 2020) {
+      updateTab(activeTabId, { month: m, year: y })
+      fetchData(m, y, activeTabId)
+    }
+  }, [])
+
+  // Deep link — cập nhật URL khi tab thay đổi
+  useEffect(() => {
+    const u = new URLSearchParams()
+    u.set('month', String(month)); u.set('year', String(year))
+    window.history.replaceState(null, '', '?' + u.toString())
+  }, [month, year])
 
   // Thêm tab mới
   const addTab = () => {
@@ -278,6 +304,10 @@ export default function BCTongPage() {
                 </div>
               ))}
             </div>
+            {/* GroupTotalChart */}
+            <div className="mt-4">
+              <GroupTotalChart data={GROUPS.map(g => ({ label: g.label, val: tq[g.key as GroupKey], color: ({ blue: '#3b82f6', orange: '#f97316', green: '#10b981', indigo: '#6366f1' }[g.color] ?? '#94a3b8') }))}/>
+            </div>
           </Section>
 
           {/* Bảng 2 — Chi tiết từng nhóm */}
@@ -296,6 +326,17 @@ export default function BCTongPage() {
           {/* Bảng 3 — Tháng nhập UV tích lũy (byMonthNhap tất cả nhóm) */}
           <Section title="Bảng 3 — Tháng nhập UV (theo nhóm phễu)">
             <MonthTable data={data} />
+            {/* MonthTrendChart */}
+            <div className="mt-4">
+              <MonthTrendChart
+                months={Array.from({length: 12}, (_, i) => i + 1)}
+                groups={GROUPS.map(g => ({
+                  label: g.label,
+                  color: ({ blue: '#3b82f6', orange: '#f97316', green: '#10b981', indigo: '#6366f1' }[g.color] ?? '#94a3b8'),
+                  data: (data[g.key as GroupKey] as GroupData | undefined)?.byMonthNhap ?? []
+                }))}
+              />
+            </div>
           </Section>
         </>
       )}

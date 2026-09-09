@@ -37,3 +37,83 @@ body {
 
   body { background: white; font-size: 12px; }
 }
+
+/* ── Dark mode (class strategy) ─────────────────────────────── */
+/* Khi <html> có class 'dark', override các Tailwind utilities */
+
+.dark body {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+/* Scrollbar */
+.dark ::-webkit-scrollbar-track { background: #1e293b; }
+.dark ::-webkit-scrollbar-thumb { background: #475569; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* Backgrounds */
+.dark .bg-slate-50  { background-color: #0f172a; }
+.dark .bg-white     { background-color: #1e293b; }
+.dark .bg-slate-100 { background-color: #2d3f55; }
+.dark .bg-slate-200 { background-color: #475569; }
+
+/* Text */
+.dark .text-slate-900 { color: #f1f5f9; }
+.dark .text-slate-800 { color: #e2e8f0; }
+.dark .text-slate-700 { color: #cbd5e1; }
+.dark .text-slate-600 { color: #94a3b8; }
+.dark .text-slate-500 { color: #94a3b8; }
+.dark .text-slate-400 { color: #64748b; }
+
+/* Borders */
+.dark .border-slate-200 { border-color: #334155; }
+.dark .border-slate-100 { border-color: #2d3f55; }
+.dark .border-slate-300 { border-color: #475569; }
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: #334155; }
+
+/* Blue accent tints */
+.dark .bg-blue-50      { background-color: #172554; }
+.dark .border-blue-100 { border-color: #1e3a8a; }
+.dark .text-blue-800   { color: #93c5fd; }
+
+/* Hover */
+.dark .hover\:bg-slate-50:hover    { background-color: #1e293b; }
+.dark .hover\:bg-slate-100:hover   { background-color: #334155; }
+.dark .hover\:text-slate-900:hover { color: #f1f5f9; }
+.dark .hover\:text-red-600:hover   { color: #f87171; }
+.dark .hover\:border-slate-300:hover { border-color: #475569; }
+
+/* Form elements */
+.dark select,
+.dark input[type="text"],
+.dark input[type="number"],
+.dark input[type="email"],
+.dark input[type="password"] {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+.dark select option { background-color: #1e293b; }
+
+/* Shadow nhẹ hơn trong dark */
+.dark .shadow-lg {
+  --tw-shadow: 0 10px 15px -3px rgba(0,0,0,.5), 0 4px 6px -4px rgba(0,0,0,.4);
+  box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),
+              var(--tw-ring-shadow,0 0 #0000),
+              var(--tw-shadow);
+}
+.dark .shadow-sm {
+  --tw-shadow: 0 1px 2px 0 rgba(0,0,0,.4);
+  box-shadow: var(--tw-ring-offset-shadow,0 0 #0000),
+              var(--tw-ring-shadow,0 0 #0000),
+              var(--tw-shadow);
+}
+
+/* Hover shadow tints */
+.dark .hover\:shadow-slate-200\/60:hover { --tw-shadow-color: rgba(0,0,0,.3); }
+.dark .shadow-slate-200\/50              { --tw-shadow-color: rgba(0,0,0,.2); }
+
+/* Print không bị ảnh hưởng dark */
+@media print {
+  .dark body { background: white !important; color: black !important; }
+}
