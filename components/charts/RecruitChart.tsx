@@ -116,16 +116,39 @@ export function DailyTrendChart({ data }: { data: DayRow[] }) {
 
 // ── 5. Tổng quan 4 nhóm (tongQuan của BC Tổng) ───────────────────────
 export interface GroupBar { label: string; val: number; color: string }
-export function GroupTotalChart({ data }: { data: GroupBar[] }) {
+
+/** onBarClick: click vào 1 cột để xem drill-down chi tiết khu vực */
+export function GroupTotalChart({
+  data,
+  onBarClick,
+}: {
+  data: GroupBar[]
+  onBarClick?: (bar: GroupBar, index: number) => void
+}) {
   return (
     <ResponsiveContainer width="100%" height={180}>
       <BarChart data={data} margin={{ left: 0, right: 8, top: 4, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
         <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#64748B' }} />
         <YAxis tick={{ fontSize: 11, fill: '#64748B' }} />
-        <Tooltip content={<Tip />} />
-        <Bar dataKey="val" name="Tổng" radius={[6, 6, 0, 0]} maxBarSize={56}
-          label={{ position: 'top', fontSize: 12, fill: '#64748B', formatter: (v: any) => (typeof v === 'number' ? v.toLocaleString() : '') }}>
+        <Tooltip
+          content={<Tip />}
+          cursor={{ fill: 'rgba(148,163,184,0.12)' }}
+        />
+        <Bar
+          dataKey="val"
+          name="Tổng"
+          radius={[6, 6, 0, 0]}
+          maxBarSize={56}
+          style={onBarClick ? { cursor: 'pointer' } : undefined}
+          onClick={onBarClick ? (payload, index) => onBarClick(payload as GroupBar, index) : undefined}
+          label={{
+            position: 'top',
+            fontSize: 12,
+            fill: '#64748B',
+            formatter: (v: any) => (typeof v === 'number' ? v.toLocaleString() : ''),
+          }}
+        >
           {data.map((d, i) => <Cell key={i} fill={d.color} />)}
         </Bar>
       </BarChart>

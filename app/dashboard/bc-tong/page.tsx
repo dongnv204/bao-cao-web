@@ -8,6 +8,9 @@ import { cacheGet, cacheSet, cacheClear } from '@/lib/cache'
 import { GroupTotalChart, MonthTrendChart } from '@/components/charts/RecruitChart'
 import ComparePanel, { CompareRow } from '@/components/ComparePanel'
 import { exportBCTongExcel } from '@/lib/export-utils'
+import { useToast } from '@/components/Toast'
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
+import { DrilldownPanel } from '@/components/DrilldownPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────
 interface StatRow   { label: string; val: number }
@@ -51,7 +54,10 @@ const COLOR: Record<string, { card: string; badge: string; bar: string }> = {
   indigo: { card: 'bg-indigo-50 border-indigo-100', badge: 'text-indigo-700', bar: 'bg-indigo-500' },
 }
 
-// ── Component chính ───────────────────────────────────────────────────
+// Màu hex cho biểu đồ Recharts
+const BAR_COLOR: Record<string, string> = {
+  blue: '#3b82f6', orange: '#f97316', green: '#10b981', indigo: '#6366f1',
+}
 
 // ── Multi-tab state ────────────────────────────────────────────────────
 interface TabState {
@@ -64,10 +70,19 @@ interface TabState {
   refreshing: boolean
 }
 
+// ── Trạng thái drill-down ──────────────────────────────────────────────
+interface DrillState {
+  label: string
+  color: string
+  total: number
+  rows:  StatRow[]
+}
+
 export default function BCTongPage() {
   const now    = new Date()
   const nextId  = useRef(2)
   const { getPage, savePage } = useTabsStore()
+  const { toast, dismiss }    = useToast()
 
   // ── Tabs — khôi phục từ store nếu đã từng mở trang này ───────────────
   const [tabs, setTabs] = useState<TabState[]>(() => {
@@ -83,6 +98,9 @@ export default function BCTongPage() {
   const updateTab = useCallback((id: string, patch: Partial<TabState>) => {
     setTabs(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
   }, [])
+
+  // ── Drill-down state ───────────────────────────────────────────────
+  const [drillGroup, setDrillGroup] = useState<DrillState | null>(null)
 
   // ── So sánh 2 tab ─────────────────────────────────────────────────
   const [compareOpen, setCompareOpen] = useLocalState(false)
@@ -101,7 +119,6 @@ export default function BCTongPage() {
       { label: 'Đào Tạo',  a: a.daoTao ?? 0, b: b.daoTao ?? 0 },
       { label: 'Đậu PV',   a: a.dauPV  ?? 0, b: b.dauPV  ?? 0 },
     ]
-    // Chi tiết từng nhóm
     const groups: { key: 'duyet'|'kyHD'|'daoTao'|'dauPV'; label: string }[] = [
       { key: 'duyet', label: 'Duyệt' }, { key: 'kyHD', label: 'Ký HĐ' },
       { key: 'daoTao', label: 'Đào Tạo' }, { key: 'dauPV', label: 'Đậu PV' },
@@ -127,21 +144,37 @@ export default function BCTongPage() {
   // Tải dữ liệu cho 1 tab cụ thể
   const fetchData = useCallback(async (m: number, y: number, tabId: string, skipCache = false) => {
     updateTab(tabId, { loading: true, error: '', data: null })
+
+    // Toast loading
+    const loadingId = toast('loading', `Đang tải T${m}/${y}...`)
+
     try {
       if (!skipCache) {
         const cached = cacheGet<BCTongData>(`bc-tong:${m}:${y}`)
-        if (cached) { updateTab(tabId, { data: cached }); return }
+        if (cached) {
+          updateTab(tabId, { data: cached })
+          dismiss(loadingId)
+          toast('info', 'Từ cache', `Dữ liệu T${m}/${y} · còn hạn 30 phút`)
+          return
+        }
       }
       const res = await fetch(`/api/reports/bc-tong?month=${m}&year=${y}`)
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`) }
       const d = await res.json()
       cacheSet(`bc-tong:${m}:${y}`, d)
       updateTab(tabId, { data: d })
-    } catch (e: any) { updateTab(tabId, { error: e.message }) }
-    finally { updateTab(tabId, { loading: false }) }
-  }, [updateTab])
+      dismiss(loadingId)
+      toast('success', `Tải xong T${m}/${y}`, `Cập nhật: ${d.updatedAt ?? 'vừa xong'}`)
+    } catch (e: any) {
+      updateTab(tabId, { error: e.message })
+      dismiss(loadingId)
+      toast('error', 'Lỗi tải dữ liệu', e.message)
+    } finally {
+      updateTab(tabId, { loading: false })
+    }
+  }, [updateTab, toast, dismiss])
 
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
     const id = activeTabId
     const t  = activeTab
     updateTab(id, { refreshing: true })
@@ -149,7 +182,16 @@ export default function BCTongPage() {
     await fetch(`/api/revalidate?tag=bc-tong`, { method: 'POST' }).catch(() => {})
     await fetchData(t.month, t.year, id, true)
     updateTab(id, { refreshing: false })
-  }
+  }, [activeTabId, activeTab, updateTab, fetchData])
+
+  // ── Supabase Realtime — tự động refresh khi Apps Script gửi tín hiệu ──
+  useRealtimeRefresh(
+    useCallback(() => {
+      toast('info', 'Dữ liệu mới!', 'Google Sheets vừa cập nhật — đang tải lại...')
+      refreshData()
+    }, [toast, refreshData]),
+    'bc-tong'
+  )
 
   // Đồng bộ tabs → store mỗi khi thay đổi
   useEffect(() => { savePage('bc-tong', { tabs, activeTabId }) }, [tabs, activeTabId, savePage])
@@ -204,6 +246,20 @@ export default function BCTongPage() {
       setActiveTabId(next[Math.min(idx, next.length - 1)].id)
     }
   }
+
+  // Click vào bar → mở drill-down chi tiết khu vực
+  const handleBarClick = useCallback((bar: { label: string; val: number; color: string }, _index: number) => {
+    if (!data) return
+    const group = GROUPS.find(g => g.label === bar.label)
+    if (!group) return
+    const grp = data[group.key as GroupKey] as GroupData | undefined
+    setDrillGroup({
+      label: group.label,
+      color: group.color,
+      total: grp?.total ?? bar.val,
+      rows:  grp?.byThiTruong ?? [],
+    })
+  }, [data])
 
   const tq = data?.tongQuan
 
@@ -304,10 +360,32 @@ export default function BCTongPage() {
                 </div>
               ))}
             </div>
-            {/* GroupTotalChart */}
+
+            {/* GroupTotalChart — click để xem drill-down khu vực */}
             <div className="mt-4">
-              <GroupTotalChart data={GROUPS.map(g => ({ label: g.label, val: tq[g.key as GroupKey], color: ({ blue: '#3b82f6', orange: '#f97316', green: '#10b981', indigo: '#6366f1' }[g.color] ?? '#94a3b8') }))}/>
+              <p className="text-xs text-slate-400 mb-2">💡 Click vào cột để xem chi tiết theo khu vực</p>
+              <GroupTotalChart
+                data={GROUPS.map(g => ({
+                  label: g.label,
+                  val:   tq[g.key as GroupKey],
+                  color: BAR_COLOR[g.color] ?? '#94a3b8',
+                }))}
+                onBarClick={handleBarClick}
+              />
             </div>
+
+            {/* Drill-down panel — hiện khi click vào bar */}
+            {drillGroup && (
+              <div className="mt-4">
+                <DrilldownPanel
+                  label={drillGroup.label}
+                  color={drillGroup.color}
+                  total={drillGroup.total}
+                  rows={drillGroup.rows}
+                  onClose={() => setDrillGroup(null)}
+                />
+              </div>
+            )}
           </Section>
 
           {/* Bảng 2 — Chi tiết từng nhóm */}
@@ -326,13 +404,12 @@ export default function BCTongPage() {
           {/* Bảng 3 — Tháng nhập UV tích lũy (byMonthNhap tất cả nhóm) */}
           <Section title="Bảng 3 — Tháng nhập UV (theo nhóm phễu)">
             <MonthTable data={data} />
-            {/* MonthTrendChart */}
             <div className="mt-4">
               <MonthTrendChart
                 months={Array.from({length: 12}, (_, i) => i + 1)}
                 groups={GROUPS.map(g => ({
                   label: g.label,
-                  color: ({ blue: '#3b82f6', orange: '#f97316', green: '#10b981', indigo: '#6366f1' }[g.color] ?? '#94a3b8'),
+                  color: BAR_COLOR[g.color] ?? '#94a3b8',
                   data: (data[g.key as GroupKey] as GroupData | undefined)?.byMonthNhap ?? []
                 }))}
               />
@@ -367,7 +444,6 @@ function GroupCard({ label, color, grp }: { label: string; color: string; grp: G
         <span className={`text-xl font-bold ${c.badge}`}>{grp.total}</span>
       </div>
 
-      {/* Top trạng thái */}
       {topTT.length > 0 && (
         <div className="mb-3">
           <p className="text-xs text-slate-500 mb-1.5">Trạng thái</p>
@@ -390,7 +466,6 @@ function GroupCard({ label, color, grp }: { label: string; color: string; grp: G
         </div>
       )}
 
-      {/* Top khu vực */}
       {topKV.length > 0 && (
         <div>
           <p className="text-xs text-slate-500 mb-1.5">Khu vực</p>
@@ -409,7 +484,6 @@ function GroupCard({ label, color, grp }: { label: string; color: string; grp: G
 
 // ── MonthTable — tháng nhập UV cross nhóm ────────────────────────────
 function MonthTable({ data }: { data: BCTongData }) {
-  // Gom tất cả tháng
   const monthSet = new Set<number>()
   GROUPS.forEach(g => {
     const grp = data[g.key as GroupKey] as GroupData | undefined
@@ -418,7 +492,6 @@ function MonthTable({ data }: { data: BCTongData }) {
   const months = Array.from(monthSet).sort((a, b) => a - b)
   if (months.length === 0) return <p className="text-sm text-slate-400">Không có dữ liệu</p>
 
-  // Lookup nhanh
   function getVal(grp: GroupData | undefined, m: number) {
     return grp?.byMonthNhap.find(r => r.month === m)?.val ?? 0
   }
