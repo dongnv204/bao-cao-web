@@ -8,6 +8,8 @@ import ComparePanel, { CompareRow } from '@/components/ComparePanel'
 import { exportBCThangExcel } from '@/lib/export-utils'
 import { cacheGet, cacheSet, cacheClear } from '@/lib/cache'
 import { FunnelChart, WeeklyChart, MarketChart } from '@/components/charts/RecruitChart'
+import { useToast } from '@/components/Toast'
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 
 // ── Types ──────────────────────────────────────────────────────────────
 interface TongQuan {
@@ -49,6 +51,7 @@ export default function BCThangPage() {
   const now    = new Date()
   const nextId  = useRef(2)
   const { getPage, savePage } = useTabsStore()
+  const { toast, dismiss }   = useToast()
 
   // ── Tabs — khôi phục từ store nếu đã từng mở trang này ───────────────
   const [tabs, setTabs] = useState<TabState[]>(() => {
@@ -107,18 +110,26 @@ export default function BCThangPage() {
       if (cached) { updateTab(tabId, { data: cached, loading: false, error: '' }); return }
     }
     updateTab(tabId, { loading: true, error: '', data: null })
+    const loadingId = toast('loading', 'Đang tải...', `Tháng ${m}/${y}`)
     try {
       const res = await fetch(`/api/reports/bc-thang?month=${m}&year=${y}`)
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`) }
-      const d = await res.json()
+      const d: BCThangData = await res.json()
       cacheSet(`bc-thang:${m}:${y}`, d)
       updateTab(tabId, { data: d })
-    } catch (e: any) { updateTab(tabId, { error: (e as Error).message }) }
+      dismiss(loadingId)
+      if (d.empty) toast('info', 'Không có dữ liệu', d.message ?? `Tháng ${m}/${y} chưa có dữ liệu`)
+      else          toast('success', 'Đã tải xong!', `Dữ liệu tháng ${m}/${y}`)
+    } catch (e: any) {
+      dismiss(loadingId)
+      toast('error', 'Lỗi tải dữ liệu', (e as Error).message)
+      updateTab(tabId, { error: (e as Error).message })
+    }
     finally { updateTab(tabId, { loading: false }) }
-  }, [updateTab])
+  }, [updateTab, toast, dismiss])
 
   // Xoá cache client + server rồi tải lại
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
     const id = activeTabId
     const t  = activeTab
     updateTab(id, { refreshing: true })
@@ -126,7 +137,16 @@ export default function BCThangPage() {
     await fetch(`/api/revalidate?tag=bc-thang`, { method: 'POST' }).catch(() => {})
     await fetchData(t.month, t.year, id, true)
     updateTab(id, { refreshing: false })
-  }
+  }, [activeTabId, activeTab, fetchData, updateTab])
+
+  // Lắng nghe tín hiệu refresh từ Supabase Realtime (Apps Script → Supabase → Web)
+  useRealtimeRefresh(
+    useCallback(() => {
+      toast('info', '📊 Dữ liệu mới!', 'Google Sheets vừa cập nhật — đang tải lại...')
+      refreshData()
+    }, [toast, refreshData]),
+    'bc-thang'
+  )
 
   // Đồng bộ tabs → store mỗi khi thay đổi
   useEffect(() => { savePage('bc-thang', { tabs, activeTabId }) }, [tabs, activeTabId, savePage])
