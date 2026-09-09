@@ -14,8 +14,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <Sidebar user={user} />
 
       {/* Nội dung chính — bọc trong TabsStoreProvider để giữ tab state khi điều hướng */}
-      <main className="flex-1 ml-64 min-h-screen">
-        <div className="p-8">
+      <main className="flex-1 md:ml-64 min-h-screen">
+        <div className="p-4 md:p-8 pt-16 md:pt-8">
           <TabsStoreProvider>
             {children}
           </TabsStoreProvider>
