@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
 import { TabsStoreProvider } from './tabs-store'
 import { ToastProvider } from '@/components/Toast'
+import PrefetchReports from '@/components/PrefetchReports'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Kiểm tra đã đăng nhập chưa
@@ -19,6 +20,8 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className="p-4 md:p-8 pt-16 md:pt-8">
           <ToastProvider>
             <TabsStoreProvider>
+              {/* Tải ngầm 3 báo cáo ngay khi vào dashboard */}
+              <PrefetchReports />
               {children}
             </TabsStoreProvider>
           </ToastProvider>
