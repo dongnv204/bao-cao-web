@@ -296,7 +296,7 @@ export default function BCTongPage() {
       {/* Tiêu đề + bộ lọc */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Báo Cáo Tổng — Tuyển Dụng</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Báo Cáo Tổng {String(month).padStart(2, '0')}/{activeTab?.year ?? year}</h1>
           <p className="text-xs text-slate-400 mt-0.5">
             Thống kê UV đậu PV / đào tạo / ký HĐ / duyệt trong tháng
             {data && !data.empty && ` · Cập nhật: ${data.updatedAt}`}
