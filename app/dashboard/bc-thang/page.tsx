@@ -6,7 +6,7 @@ import { useMemo, useState as useLocalState } from 'react'
 import ExportButtons from '@/components/ExportButtons'
 import ComparePanel, { CompareRow } from '@/components/ComparePanel'
 import { exportBCThangExcel } from '@/lib/export-utils'
-import { cacheGet, cacheSet, cacheClear } from '@/lib/cache'
+import { cacheGet, cacheGetStale, cacheSet, cacheClear } from '@/lib/cache'
 import { FunnelChart, WeeklyChart, MarketChart } from '@/components/charts/RecruitChart'
 import { useToast } from '@/components/Toast'
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
@@ -102,21 +102,42 @@ export default function BCThangPage() {
   const error      = activeTab.error
   const refreshing = activeTab.refreshing
 
-  // Tải dữ liệu cho 1 tab cụ thể
+  // Fetch dữ liệu mới từ server (dùng nội bộ)
+  const _fetchFromServer = useCallback(async (m: number, y: number, tabId: string) => {
+    const res = await fetch(`/api/reports/bc-thang?month=${m}&year=${y}`)
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`) }
+    const d: BCThangData = await res.json()
+    cacheSet(`bc-thang:${m}:${y}`, d)
+    updateTab(tabId, { data: d })
+    return d
+  }, [updateTab])
+
+  // Tải dữ liệu — SWR: nếu có stale cache thì show ngay, fetch mới ở background
   const fetchData = useCallback(async (m: number, y: number, tabId: string, skipCache = false) => {
-    // Kiểm tra cache 30 phút trước khi fetch
     if (!skipCache) {
-      const cached = cacheGet<BCThangData>(`bc-thang:${m}:${y}`)
-      if (cached) { updateTab(tabId, { data: cached, loading: false, error: '' }); return }
+      // Cache còn valid → dùng ngay
+      const fresh = cacheGet<BCThangData>(`bc-thang:${m}:${y}`)
+      if (fresh) { updateTab(tabId, { data: fresh, loading: false, error: '' }); return }
+
+      // Cache expired nhưng có stale data → show ngay + fetch mới ngầm
+      const stale = cacheGetStale<BCThangData>(`bc-thang:${m}:${y}`)
+      if (stale) {
+        updateTab(tabId, { data: stale, loading: false, refreshing: true, error: '' })
+        try {
+          const d = await _fetchFromServer(m, y, tabId)
+          if (d.empty) toast('info', 'Không có dữ liệu', d.message ?? `Tháng ${m}/${y} chưa có dữ liệu`)
+          else          toast('success', 'Làm mới xong!', `Dữ liệu tháng ${m}/${y}`)
+        } catch { /* silent — stale data vẫn hiển thị */ }
+        finally { updateTab(tabId, { refreshing: false }) }
+        return
+      }
     }
+
+    // Không có cache gì → show spinner
     updateTab(tabId, { loading: true, error: '', data: null })
     const loadingId = toast('loading', 'Đang tải...', `Tháng ${m}/${y}`)
     try {
-      const res = await fetch(`/api/reports/bc-thang?month=${m}&year=${y}`)
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`) }
-      const d: BCThangData = await res.json()
-      cacheSet(`bc-thang:${m}:${y}`, d)
-      updateTab(tabId, { data: d })
+      const d = await _fetchFromServer(m, y, tabId)
       dismiss(loadingId)
       if (d.empty) toast('info', 'Không có dữ liệu', d.message ?? `Tháng ${m}/${y} chưa có dữ liệu`)
       else          toast('success', 'Đã tải xong!', `Dữ liệu tháng ${m}/${y}`)
@@ -124,9 +145,10 @@ export default function BCThangPage() {
       dismiss(loadingId)
       toast('error', 'Lỗi tải dữ liệu', (e as Error).message)
       updateTab(tabId, { error: (e as Error).message })
+    } finally {
+      updateTab(tabId, { loading: false })
     }
-    finally { updateTab(tabId, { loading: false }) }
-  }, [updateTab, toast, dismiss])
+  }, [updateTab, toast, dismiss, _fetchFromServer])
 
   // Xoá cache client + server rồi tải lại
   const refreshData = useCallback(async () => {

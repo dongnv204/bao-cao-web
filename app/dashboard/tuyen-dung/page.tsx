@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTabsStore } from '../tabs-store'
 import { useMemo, useState as useLocalState } from 'react'
 import ExportButtons from '@/components/ExportButtons'
-import { cacheGet, cacheSet, cacheClear } from '@/lib/cache'
+import { cacheGet, cacheGetStale, cacheSet, cacheClear } from '@/lib/cache'
 import { DailyTrendChart } from '@/components/charts/RecruitChart'
 import ComparePanel, { CompareRow } from '@/components/ComparePanel'
 import { exportBCNgayExcel } from '@/lib/export-utils'
@@ -262,10 +262,7 @@ export default function TuyenDungPage() {
   // Alias — JSX bên dưới không cần sửa
   const activeTab       = tabs.find(t => t.id === activeTabId) ?? tabs[0]
   const selectedDate    = activeTab.date
-  const setSelectedDate = (d: string) => {
-    updateTab(activeTabId, { date: d })
-    loadData(d, activeTabId)  // Tự động load khi đổi ngày
-  }
+  const setSelectedDate = (d: string) => updateTab(activeTabId, { date: d })
   const data            = activeTab.data
   const loading         = activeTab.loading
   const error           = activeTab.error
@@ -276,24 +273,45 @@ export default function TuyenDungPage() {
     weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
   })
 
-  // Tải dữ liệu cho 1 tab cụ thể
+  // Fetch dữ liệu mới từ server (dùng nội bộ)
+  const _fetchFromServer = useCallback(async (dateStr: string, tabId: string) => {
+    const d = new Date(dateStr + 'T00:00:00')
+    const res = await fetch(
+      `/api/reports/tuyen-dung?day=${d.getDate()}&month=${d.getMonth()+1}&year=${d.getFullYear()}`
+    )
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || 'Lỗi không xác định')
+    cacheSet(`bc-ngay:${dateStr}`, json)
+    updateTab(tabId, { data: json })
+  }, [updateTab])
+
+  // Tải dữ liệu — SWR: nếu có stale cache thì show ngay, fetch mới ở background
   const loadData = useCallback(async (dateStr: string, tabId: string, skipCache = false) => {
+    if (!skipCache) {
+      // Cache còn valid → dùng ngay, không fetch
+      const fresh = cacheGet<ReportData>(`bc-ngay:${dateStr}`)
+      if (fresh) { updateTab(tabId, { data: fresh, loading: false, error: '' }); return }
+
+      // Cache expired nhưng vẫn còn stale data → show ngay + fetch mới ngầm
+      const stale = cacheGetStale<ReportData>(`bc-ngay:${dateStr}`)
+      if (stale) {
+        updateTab(tabId, { data: stale, loading: false, refreshing: true, error: '' })
+        try { await _fetchFromServer(dateStr, tabId) } catch { /* silent — stale data vẫn hiển thị */ }
+        finally { updateTab(tabId, { refreshing: false }) }
+        return
+      }
+    }
+
+    // Không có cache gì → show spinner, chờ fetch
     updateTab(tabId, { loading: true, error: '' })
     try {
-      if (!skipCache) {
-        const cached = cacheGet<ReportData>(`bc-ngay:${dateStr}`)
-        if (cached) { updateTab(tabId, { data: cached }); return }
-      }
-      const d = new Date(dateStr + 'T00:00:00')
-      const res = await fetch(
-        `/api/reports/tuyen-dung?day=${d.getDate()}&month=${d.getMonth()+1}&year=${d.getFullYear()}`
-      )
-      const json = await res.json()
-      if (!res.ok) { updateTab(tabId, { data: null, error: json.error || 'Lỗi không xác định' }) }
-      else { cacheSet(`bc-ngay:${dateStr}`, json); updateTab(tabId, { data: json }) }
-    } catch { updateTab(tabId, { data: null, error: 'Lỗi kết nối máy chủ' }) }
-    finally { updateTab(tabId, { loading: false }) }
-  }, [updateTab])
+      await _fetchFromServer(dateStr, tabId)
+    } catch (e: any) {
+      updateTab(tabId, { data: null, error: e?.message || 'Lỗi kết nối máy chủ' })
+    } finally {
+      updateTab(tabId, { loading: false })
+    }
+  }, [updateTab, _fetchFromServer])
 
   // Đồng bộ tabs → store mỗi khi thay đổi
   useEffect(() => { savePage('bc-ngay', { tabs, activeTabId }) }, [tabs, activeTabId, savePage])

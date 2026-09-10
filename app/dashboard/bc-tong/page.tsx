@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTabsStore } from '../tabs-store'
 import { useMemo, useState as useLocalState } from 'react'
 import ExportButtons from '@/components/ExportButtons'
-import { cacheGet, cacheSet, cacheClear } from '@/lib/cache'
+import { cacheGet, cacheGetStale, cacheSet, cacheClear } from '@/lib/cache'
 import { GroupTotalChart, MonthTrendChart } from '@/components/charts/RecruitChart'
 import ComparePanel, { CompareRow } from '@/components/ComparePanel'
-import { exportBCTongPDF } from '@/lib/export-utils'
+import { exportBCTongExcel } from '@/lib/export-utils'
 import { useToast } from '@/components/Toast'
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 import { DrilldownPanel } from '@/components/DrilldownPanel'
@@ -141,28 +141,45 @@ export default function BCTongPage() {
   const error      = activeTab.error
   const refreshing = activeTab.refreshing
 
-  // Tải dữ liệu cho 1 tab cụ thể
+  // Fetch dữ liệu mới từ server (dùng nội bộ)
+  const _fetchFromServer = useCallback(async (m: number, y: number, tabId: string) => {
+    const res = await fetch(`/api/reports/bc-tong?month=${m}&year=${y}`)
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`) }
+    const d = await res.json()
+    cacheSet(`bc-tong:${m}:${y}`, d)
+    updateTab(tabId, { data: d })
+    return d
+  }, [updateTab])
+
+  // Tải dữ liệu — SWR: nếu có stale cache thì show ngay, fetch mới ở background
   const fetchData = useCallback(async (m: number, y: number, tabId: string, skipCache = false) => {
-    updateTab(tabId, { loading: true, error: '', data: null })
-
-    // Toast loading
-    const loadingId = toast('loading', `Đang tải T${m}/${y}...`)
-
-    try {
-      if (!skipCache) {
-        const cached = cacheGet<BCTongData>(`bc-tong:${m}:${y}`)
-        if (cached) {
-          updateTab(tabId, { data: cached })
-          dismiss(loadingId)
-          toast('info', 'Từ cache', `Dữ liệu T${m}/${y} · còn hạn 30 phút`)
-          return
-        }
+    if (!skipCache) {
+      // Cache còn valid → dùng ngay
+      const fresh = cacheGet<BCTongData>(`bc-tong:${m}:${y}`)
+      if (fresh) {
+        updateTab(tabId, { data: fresh, loading: false, error: '' })
+        toast('info', 'Từ cache', `Dữ liệu T${m}/${y} · còn hạn 30 phút`)
+        return
       }
-      const res = await fetch(`/api/reports/bc-tong?month=${m}&year=${y}`)
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`) }
-      const d = await res.json()
-      cacheSet(`bc-tong:${m}:${y}`, d)
-      updateTab(tabId, { data: d })
+
+      // Cache expired nhưng có stale data → show ngay + fetch mới ngầm
+      const stale = cacheGetStale<BCTongData>(`bc-tong:${m}:${y}`)
+      if (stale) {
+        updateTab(tabId, { data: stale, loading: false, refreshing: true, error: '' })
+        try {
+          const d = await _fetchFromServer(m, y, tabId)
+          toast('success', `Làm mới xong T${m}/${y}`, `Cập nhật: ${d.updatedAt ?? 'vừa xong'}`)
+        } catch { /* silent — stale data vẫn hiển thị */ }
+        finally { updateTab(tabId, { refreshing: false }) }
+        return
+      }
+    }
+
+    // Không có cache gì → show spinner
+    updateTab(tabId, { loading: true, error: '', data: null })
+    const loadingId = toast('loading', `Đang tải T${m}/${y}...`)
+    try {
+      const d = await _fetchFromServer(m, y, tabId)
       dismiss(loadingId)
       toast('success', `Tải xong T${m}/${y}`, `Cập nhật: ${d.updatedAt ?? 'vừa xong'}`)
     } catch (e: any) {
@@ -172,7 +189,7 @@ export default function BCTongPage() {
     } finally {
       updateTab(tabId, { loading: false })
     }
-  }, [updateTab, toast, dismiss])
+  }, [updateTab, toast, dismiss, _fetchFromServer])
 
   const refreshData = useCallback(async () => {
     const id = activeTabId
@@ -323,10 +340,9 @@ export default function BCTongPage() {
             className="px-3 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm hover:bg-slate-100 disabled:opacity-50 transition">
             {refreshing ? '...' : '🔄'}
           </button>
-          {/* Chỉ hiện nút PDF (không có Excel cho trang BC Tổng) */}
           <ExportButtons
             disabled={!data || loading}
-            onPdfClick={() => data && exportBCTongPDF(data)}
+            onExcelClick={() => data && exportBCTongExcel(data, `T${month}-${year}`)}
           />
         </div>
       </div>

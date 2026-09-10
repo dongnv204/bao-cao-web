@@ -18,6 +18,19 @@ export function cacheGet<T>(key: string): T | null {
   } catch { return null }
 }
 
+/**
+ * Lấy dữ liệu stale — trả về data kể cả đã hết TTL (dùng cho SWR pattern).
+ * Trả về null chỉ khi key không tồn tại.
+ */
+export function cacheGetStale<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(`cache:${key}`)
+    if (!raw) return null
+    const entry: Entry<T> = JSON.parse(raw)
+    return entry.data
+  } catch { return null }
+}
+
 /** Lưu dữ liệu vào cache với timestamp hiện tại. */
 export function cacheSet<T>(key: string, data: T): void {
   try {
