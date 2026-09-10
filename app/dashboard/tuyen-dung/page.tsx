@@ -427,8 +427,8 @@ export default function TuyenDungPage() {
           />
           <button
             onClick={() => loadData(selectedDate, activeTabId)} disabled={loading}
-            className="bg-white text-[#0d1b6b] text-sm font-bold px-4 py-2 rounded-lg
-                       hover:bg-blue-50 transition disabled:opacity-50 flex items-center gap-2"
+            className="bg-white dark:bg-blue-500 text-[#0d1b6b] dark:text-white text-sm font-bold px-4 py-2 rounded-lg
+                       hover:bg-blue-50 dark:hover:bg-blue-400 transition disabled:opacity-50 flex items-center gap-2"
           >
             {loading
               ? <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
