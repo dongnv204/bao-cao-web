@@ -262,7 +262,10 @@ export default function TuyenDungPage() {
   // Alias — JSX bên dưới không cần sửa
   const activeTab       = tabs.find(t => t.id === activeTabId) ?? tabs[0]
   const selectedDate    = activeTab.date
-  const setSelectedDate = (d: string) => updateTab(activeTabId, { date: d })
+  const setSelectedDate = (d: string) => {
+    updateTab(activeTabId, { date: d })
+    loadData(d, activeTabId)  // Tự động load khi đổi ngày
+  }
   const data            = activeTab.data
   const loading         = activeTab.loading
   const error           = activeTab.error
