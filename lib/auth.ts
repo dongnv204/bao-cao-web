@@ -16,7 +16,7 @@ export async function createSession(user: {
 }) {
   const token = await new SignJWT(user)
     .setProtectedHeader({ alg: 'HS256' })
-    .setExpirationTime('8h') // Hết hạn sau 8 giờ làm việc
+    .setExpirationTime('30d') // Hết hạn sau 30 ngày
     .setIssuedAt()
     .sign(JWT_SECRET)
 
