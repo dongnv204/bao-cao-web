@@ -59,7 +59,8 @@ export async function POST(request: NextRequest) {
     res.cookies.set(COOKIE_NAME, token, {
       httpOnly: true, secure: true,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30, // 30 ngày — giữ đăng nhập qua tab/browser restart
+      // Không set maxAge → session cookie: tồn tại khi browser mở,
+      // tự xóa khi tắt browser hoàn toàn
       path: '/',
     })
 

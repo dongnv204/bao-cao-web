@@ -6,27 +6,40 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback_secret_change_this_in_production_32chars'
 )
 
-// Các trang không cần đăng nhập
-const PUBLIC_PATHS = ['/', '/api/auth/login']
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-
-  // Bỏ qua trang public
-  if (PUBLIC_PATHS.includes(pathname)) {
-    return NextResponse.next()
-  }
 
   // Bỏ qua static files
   if (pathname.startsWith('/_next') || pathname.startsWith('/favicon')) {
     return NextResponse.next()
   }
 
-  // Kiểm tra session cookie
+  // Bỏ qua API auth (login/logout)
+  if (pathname.startsWith('/api/auth')) {
+    return NextResponse.next()
+  }
+
   const token = request.cookies.get('bao-cao-session')?.value
 
+  // Trang login (/)
+  if (pathname === '/') {
+    if (token) {
+      try {
+        await jwtVerify(token, JWT_SECRET)
+        // Đã đăng nhập → vào thẳng dashboard, không cần login lại
+        return NextResponse.redirect(new URL('/dashboard', request.url))
+      } catch {
+        // Token hết hạn → xóa cookie, cho vào login
+        const res = NextResponse.next()
+        res.cookies.delete('bao-cao-session')
+        return res
+      }
+    }
+    return NextResponse.next()
+  }
+
+  // Các trang protected
   if (!token) {
-    // Chưa đăng nhập → redirect về trang login
     return NextResponse.redirect(new URL('/', request.url))
   }
 
@@ -34,7 +47,6 @@ export async function middleware(request: NextRequest) {
     await jwtVerify(token, JWT_SECRET)
     return NextResponse.next()
   } catch {
-    // Token hết hạn hoặc không hợp lệ
     const response = NextResponse.redirect(new URL('/', request.url))
     response.cookies.delete('bao-cao-session')
     return response
