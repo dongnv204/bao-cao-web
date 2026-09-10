@@ -3,7 +3,7 @@ import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 
 export const metadata: Metadata = {
-  title: 'Hệ Thống Báo Cáo Nội Bộ',
+  title: 'Báo Cáo Nội Bộ',
   description: 'Dashboard báo cáo dành cho nội bộ công ty',
 }
 

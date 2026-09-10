@@ -55,8 +55,7 @@ export default function LoginPage() {
                 d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Hệ Thống Báo Cáo</h1>
-          <p className="text-slate-500 text-sm mt-1">Dành cho nội bộ công ty</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Báo Cáo Nội Bộ</h1>
         </div>
 
         {/* Form đăng nhập */}
@@ -130,9 +129,6 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-slate-400 text-xs mt-6">
-          Chỉ dành cho nhân viên nội bộ
-        </p>
       </div>
     </div>
   )
