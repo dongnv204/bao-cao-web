@@ -40,6 +40,7 @@ const NAV_ITEMS = [
       { label: 'BC Ngày',   href: '/dashboard/tuyen-dung' },
       { label: 'BC Tháng',  href: '/dashboard/bc-thang'   },
       { label: 'BC Tổng',   href: '/dashboard/bc-tong'    },
+      { label: 'BC Test',   href: '/dashboard/tuyen-dung/bc-test' },
     ],
   },
   {
