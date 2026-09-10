@@ -76,6 +76,15 @@ body {
 .dark .border-blue-100 { border-color: #1e3a8a; }
 .dark .text-blue-800   { color: #93c5fd; }
 
+/* Gradient stops — login page (from-blue-50 via-slate-50 to-slate-50) */
+.dark .from-blue-50 { --tw-gradient-from: #0c1425 var(--tw-gradient-from-position); --tw-gradient-from-shadow: transparent; }
+.dark .via-slate-50  { --tw-gradient-via:  #0f172a var(--tw-gradient-via-position); }
+.dark .to-slate-50   { --tw-gradient-to:   #0f172a var(--tw-gradient-to-position); }
+
+/* Decorative blur blobs — login page */
+.dark .bg-blue-300  { background-color: #1e3a8a; }
+.dark .bg-sky-200   { background-color: #0c4a6e; }
+
 /* Hover */
 .dark .hover\:bg-slate-50:hover    { background-color: #1e293b; }
 .dark .hover\:bg-slate-100:hover   { background-color: #334155; }
