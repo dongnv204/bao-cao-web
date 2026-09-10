@@ -247,7 +247,7 @@ export default function BCThangPage() {
             {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Báo Cáo Tháng — Tuyển Dụng</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Báo Cáo Tháng {String(month).padStart(2, '0')}/{year}</h1>
           {data && !data.empty && (
             <p className="text-xs text-slate-400 mt-0.5">Cập nhật: {data.updatedAt}</p>
           )}
