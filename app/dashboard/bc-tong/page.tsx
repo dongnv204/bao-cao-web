@@ -7,7 +7,7 @@ import ExportButtons from '@/components/ExportButtons'
 import { cacheGet, cacheSet, cacheClear } from '@/lib/cache'
 import { GroupTotalChart, MonthTrendChart } from '@/components/charts/RecruitChart'
 import ComparePanel, { CompareRow } from '@/components/ComparePanel'
-import { exportBCTongExcel } from '@/lib/export-utils'
+import { exportBCTongPDF } from '@/lib/export-utils'
 import { useToast } from '@/components/Toast'
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 import { DrilldownPanel } from '@/components/DrilldownPanel'
@@ -323,9 +323,10 @@ export default function BCTongPage() {
             className="px-3 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm hover:bg-slate-100 disabled:opacity-50 transition">
             {refreshing ? '...' : '🔄'}
           </button>
+          {/* Chỉ hiện nút PDF (không có Excel cho trang BC Tổng) */}
           <ExportButtons
             disabled={!data || loading}
-            onExcelClick={() => data && exportBCTongExcel(data, `T${month}-${year}`)}
+            onPdfClick={() => data && exportBCTongPDF(data)}
           />
         </div>
       </div>

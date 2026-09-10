@@ -3,38 +3,44 @@
 /**
  * ExportButtons — nút Xuất Excel và Xuất PDF dùng chung cho các trang báo cáo.
  * Props:
- *   onExcelClick — hàm gọi khi bấm Excel (truyền hàm export từng trang vào)
+ *   onExcelClick — hàm gọi khi bấm Excel (bỏ qua để ẩn nút Excel)
+ *   onPdfClick   — hàm gọi khi bấm PDF (mặc định: window.print())
  *   disabled      — ẩn/disable khi chưa có data
  */
 interface Props {
-  onExcelClick: () => void
+  onExcelClick?: () => void  // optional — không truyền thì ẩn nút Excel
+  onPdfClick?: () => void    // optional — mặc định window.print()
   disabled?: boolean
 }
 
-export default function ExportButtons({ onExcelClick, disabled }: Props) {
+export default function ExportButtons({ onExcelClick, onPdfClick, disabled }: Props) {
+  const handlePdf = onPdfClick ?? (() => window.print())
+
   return (
     <div className="flex items-center gap-2 no-print" data-no-print>
-      {/* Xuất Excel */}
-      <button
-        onClick={onExcelClick}
-        disabled={disabled}
-        title="Xuất ra file Excel (.xlsx)"
-        className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-emerald-300 text-emerald-700 text-sm font-medium hover:bg-emerald-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
-      >
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="8" y1="13" x2="16" y2="13"/>
-          <line x1="8" y1="17" x2="16" y2="17"/>
-        </svg>
-        Excel
-      </button>
+      {/* Xuất Excel — chỉ hiện khi có onExcelClick */}
+      {onExcelClick && (
+        <button
+          onClick={onExcelClick}
+          disabled={disabled}
+          title="Xuất ra file Excel (.xlsx)"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-emerald-300 text-emerald-700 text-sm font-medium hover:bg-emerald-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="8" y1="13" x2="16" y2="13"/>
+            <line x1="8" y1="17" x2="16" y2="17"/>
+          </svg>
+          Excel
+        </button>
+      )}
 
       {/* Xuất PDF */}
       <button
-        onClick={() => window.print()}
+        onClick={handlePdf}
         disabled={disabled}
-        title="In trang hoặc lưu PDF"
+        title="Xuất báo cáo PDF"
         className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-300 text-red-700 text-sm font-medium hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
