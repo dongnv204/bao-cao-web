@@ -85,6 +85,32 @@ body {
 .dark .bg-blue-300  { background-color: #1e3a8a; }
 .dark .bg-sky-200   { background-color: #0c4a6e; }
 
+/* ── BC Ngày — hàng ngày hiện tại (bg-yellow-50) ── */
+.dark .bg-yellow-50 { background-color: #3c1f00; }
+
+/* ── BC Tổng — card màu Bảng 1 ── */
+.dark .bg-orange-50       { background-color: #431407; }
+.dark .border-orange-100  { border-color: #9a3412; }
+.dark .bg-emerald-50      { background-color: #064e3b; }
+.dark .border-emerald-100 { border-color: #065f46; }
+.dark .bg-indigo-50       { background-color: #1e1b4b; }
+.dark .border-indigo-100  { border-color: #312e81; }
+
+/* Chữ trong card màu: label + số lớn → trắng, chữ phụ → xám sáng */
+.dark .bg-blue-50    .text-blue-700,
+.dark .bg-orange-50  .text-orange-700,
+.dark .bg-emerald-50 .text-emerald-700,
+.dark .bg-indigo-50  .text-indigo-700,
+.dark .bg-blue-50    .text-slate-900,
+.dark .bg-orange-50  .text-slate-900,
+.dark .bg-emerald-50 .text-slate-900,
+.dark .bg-indigo-50  .text-slate-900  { color: #ffffff; }
+
+.dark .bg-blue-50    .text-slate-400,
+.dark .bg-orange-50  .text-slate-400,
+.dark .bg-emerald-50 .text-slate-400,
+.dark .bg-indigo-50  .text-slate-400  { color: #94a3b8; }
+
 /* Hover */
 .dark .hover\:bg-slate-50:hover    { background-color: #1e293b; }
 .dark .hover\:bg-slate-100:hover   { background-color: #334155; }

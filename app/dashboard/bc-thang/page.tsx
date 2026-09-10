@@ -584,8 +584,8 @@ export default function BCThangPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-3 bg-slate-50 border-b border-slate-200">
-        <h2 className="text-xs font-bold text-slate-600 tracking-wide">{title}</h2>
+      <div className="px-5 py-3 bg-slate-50 dark:bg-blue-900 border-b border-slate-200 dark:border-blue-800">
+        <h2 className="text-xs font-bold text-slate-600 dark:text-white tracking-wide">{title}</h2>
       </div>
       <div className="p-5">{children}</div>
     </div>

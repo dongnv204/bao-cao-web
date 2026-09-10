@@ -533,8 +533,8 @@ function MonthTable({ data }: { data: BCTongData }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-3 border-b border-slate-100">
-        <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
+      <div className="px-5 py-3 border-b border-slate-100 dark:bg-blue-900 dark:border-blue-800">
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-white">{title}</h2>
       </div>
       <div className="p-5">{children}</div>
     </div>
