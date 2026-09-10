@@ -301,6 +301,12 @@ export default function TuyenDungPage() {
     if (maxId >= nextId.current) nextId.current = maxId + 1
   }, [])
 
+  // Tải lần đầu — bỏ qua nếu tab đã có data (khôi phục từ store)
+  useEffect(() => {
+    const first = tabs[0]
+    if (!first.data && !first.loading) loadData(first.date, first.id)
+  }, []) // eslint-disable-line
+
   // Xoá cache server rồi tải lại dữ liệu mới nhất
   const refreshData = async () => {
     const id = activeTabId
