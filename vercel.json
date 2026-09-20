@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/warmup?secret=bc-xanh-2024-warmup",
+      "schedule": "*/45 * * * *"
+    }
+  ]
+}
