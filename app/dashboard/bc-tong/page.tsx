@@ -699,55 +699,101 @@ function MonthTable({ data }: { data: BCTongData }) {
   )
 }
 
-/** Bảng so sánh KÝ HĐ & DUYỆT theo 4 tháng gần nhất (Bảng 2 & Bảng 6) */
+/**
+ * Bảng so sánh KÝ HĐ & DUYỆT theo 4 tháng gần nhất — layout Pivot (tháng làm cột)
+ * - Hàng: Ký HĐ / Duyệt (bỏ Chênh lệch)
+ * - Cột: từng tháng, sắp xếp tăng dần
+ * - Tháng gần nhất: header nền xanh (#3b82f6) chữ trắng, ô dữ liệu nền xanh nhạt
+ */
 function MonthCompareTable({ items }: { items: MonthCompareItem[] }) {
   const sorted = [...items].sort((a, b) => {
     if (a.year !== b.year) return a.year - b.year
     return a.month - b.month
   })
 
-  const maxVal = Math.max(...sorted.flatMap(r => [r.kyHD, r.duyet]), 1)
+  const maxVal    = Math.max(...sorted.flatMap(r => [r.kyHD, r.duyet]), 1)
+  const latestIdx = sorted.length - 1
 
   return (
-    <div className="space-y-4">
-      {/* Bảng số liệu */}
+    <div className="space-y-5">
+      {/* ── Pivot table ── */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm border-collapse" style={{ fontVariantNumeric: 'tabular-nums' }}>
           <thead>
-            <tr className="border-b border-slate-100">
-              <th className="text-left py-2 px-3 text-slate-500 font-medium">Tháng</th>
-              <th className="text-right py-2 px-3 font-medium text-orange-600">Ký HĐ</th>
-              <th className="text-right py-2 px-3 font-medium text-blue-600">Duyệt</th>
-              <th className="text-right py-2 px-3 text-slate-400 font-medium">Chênh lệch</th>
+            <tr>
+              <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wide bg-slate-50 border border-slate-100"
+                  style={{ minWidth: 80 }}>
+                Chỉ số
+              </th>
+              {sorted.map((r, i) => {
+                const isLatest = i === latestIdx
+                return (
+                  <th key={i}
+                    className="py-2.5 px-4 text-center text-xs font-bold tracking-wide border border-slate-100"
+                    style={isLatest
+                      ? { background: '#3b82f6', color: '#ffffff' }
+                      : { background: '#f8fafc', color: '#0f172a' }
+                    }>
+                    T{String(r.month).padStart(2,'0')}/{r.year}
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
-            {sorted.map((r, i) => {
-              const diff = r.kyHD - r.duyet
-              return (
-                <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
-                  <td className="py-2 px-3 text-slate-600 font-medium">
-                    T{String(r.month).padStart(2,'0')}/{r.year}
+            {/* Hàng Ký HĐ */}
+            <tr>
+              <td className="py-3 px-4 text-xs font-bold uppercase tracking-wide border border-slate-100"
+                  style={{ background: '#fff7ed', color: '#ea580c' }}>
+                Ký HĐ
+              </td>
+              {sorted.map((r, i) => {
+                const isLatest = i === latestIdx
+                return (
+                  <td key={i}
+                    className="py-3 px-4 text-center font-extrabold border border-slate-100"
+                    style={{
+                      background: isLatest ? '#dbeafe' : '#fff7ed',
+                      color: '#f97316',
+                      fontSize: 20,
+                    }}>
+                    {r.kyHD}
                   </td>
-                  <td className="py-2 px-3 text-right font-semibold text-orange-700">{r.kyHD}</td>
-                  <td className="py-2 px-3 text-right font-semibold text-blue-700">{r.duyet}</td>
-                  <td className={`py-2 px-3 text-right text-xs font-medium ${diff > 0 ? 'text-orange-500' : diff < 0 ? 'text-blue-500' : 'text-slate-400'}`}>
-                    {diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : '–'}
+                )
+              })}
+            </tr>
+            {/* Hàng Duyệt */}
+            <tr>
+              <td className="py-3 px-4 text-xs font-bold uppercase tracking-wide border border-slate-100"
+                  style={{ background: '#eff6ff', color: '#2563eb' }}>
+                Duyệt
+              </td>
+              {sorted.map((r, i) => {
+                const isLatest = i === latestIdx
+                return (
+                  <td key={i}
+                    className="py-3 px-4 text-center font-extrabold border border-slate-100"
+                    style={{
+                      background: isLatest ? '#bfdbfe' : '#eff6ff',
+                      color: '#3b82f6',
+                      fontSize: 20,
+                    }}>
+                    {r.duyet}
                   </td>
-                </tr>
-              )
-            })}
+                )
+              })}
+            </tr>
           </tbody>
         </table>
       </div>
 
-      {/* Biểu đồ thanh ngang đơn giản */}
-      <div className="space-y-3 mt-2">
+      {/* ── Biểu đồ thanh ngang ── */}
+      <div className="space-y-3">
         {sorted.map((r, i) => (
           <div key={i}>
-            <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-              <span className="font-medium">T{String(r.month).padStart(2,'0')}/{r.year}</span>
-            </div>
+            <p className="text-xs font-semibold text-slate-500 mb-1">
+              T{String(r.month).padStart(2,'0')}/{r.year}
+            </p>
             {/* Ký HĐ */}
             <div className="flex items-center gap-2 mb-1">
               <span className="w-14 text-right text-xs text-orange-600 font-medium shrink-0">Ký HĐ</span>
