@@ -106,6 +106,57 @@ export async function getDailyListByMonth(
 }
 
 /**
+ * Fetch toàn bộ dữ liệu tháng 1 lần, tính stats ngày + tháng + daily list
+ * Dùng cho BC Ngày để tránh 3 round-trips Supabase riêng biệt
+ */
+export async function getMonthBundle(
+  month: number, year: number, day?: number
+): Promise<{
+  statsThang: CandidateStats
+  statsNgay: CandidateStats | null
+  dailyList: { ngay: string; stats: CandidateStats }[]
+}> {
+  const supabase = getSupabase()
+  const startDate = `${year}-${String(month).padStart(2,'0')}-01`
+  const lastDay = new Date(year, month, 0).getDate()
+  const endDate = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`
+
+  // 1 query duy nhất lấy toàn bộ tháng
+  const { data, error } = await supabase
+    .from('candidates')
+    .select('ngay_nhap, check_sdt, trang_thai, recruiter')
+    .gte('ngay_nhap', startDate)
+    .lte('ngay_nhap', endDate)
+    .order('ngay_nhap')
+
+  if (error) throw new Error(`Supabase error: ${error.message}`)
+  const rows = data || []
+
+  // Group theo ngày (dùng lại cho cả 3 kết quả)
+  const byDay: Record<string, typeof rows> = {}
+  rows.forEach(row => {
+    if (!byDay[row.ngay_nhap]) byDay[row.ngay_nhap] = []
+    byDay[row.ngay_nhap].push(row)
+  })
+
+  // Stats tháng (đến ngày upToDay nếu có)
+  const dayStr = day ? `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}` : endDate
+  const rowsThang = rows.filter(r => r.ngay_nhap <= dayStr)
+  const statsThang = computeStats(rowsThang)
+
+  // Stats ngày cụ thể
+  const dateStr = day ? `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}` : null
+  const statsNgay = dateStr ? computeStats(byDay[dateStr] || []) : null
+
+  // Daily list
+  const dailyList = Object.entries(byDay)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([ngay, dayRows]) => ({ ngay, stats: computeStats(dayRows!) }))
+
+  return { statsThang, statsNgay, dailyList }
+}
+
+/**
  * Tính toán stats từ mảng candidates
  */
 function computeStats(rows: { check_sdt: string; trang_thai: string; recruiter: string }[]): CandidateStats {
