@@ -23,7 +23,7 @@ export const getTuyenDungReport = unstable_cache(
       day: String(day), month: String(month), year: String(year),
     }),
   ['bc-ngay'],
-  { revalidate: 300, tags: ['bc-ngay'] }
+  { revalidate: 3600, tags: ['bc-ngay'] }
 )
 
 // ── BC Tháng — cache 15 phút, tag: bc-thang ──────────────────────────
@@ -33,7 +33,7 @@ export const getBCThangReport = unstable_cache(
       month: String(month), year: String(year),
     }),
   ['bc-thang'],
-  { revalidate: 900, tags: ['bc-thang'] }
+  { revalidate: 3600, tags: ['bc-thang'] }
 )
 
 // ── BC Tổng — cache 15 phút, tag: bc-tong ────────────────────────────
@@ -43,7 +43,7 @@ export const getBCTongReport = unstable_cache(
       month: String(month), year: String(year),
     }),
   ['bc-tong'],
-  { revalidate: 900, tags: ['bc-tong'] }
+  { revalidate: 3600, tags: ['bc-tong'] }
 )
 
 // ── Hàm xoá cache thủ công (dùng cho nút "Làm mới") ─────────────────
