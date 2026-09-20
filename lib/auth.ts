@@ -1,9 +1,10 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'fallback_secret_change_this_in_production_32chars'
-)
+if (!process.env.JWT_SECRET) {
+  throw new Error('Biến môi trường JWT_SECRET chưa được cấu hình!')
+}
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET)
 
 const COOKIE_NAME = 'bao-cao-session'
 
