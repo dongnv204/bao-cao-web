@@ -2,11 +2,18 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 
+// middleware chạy ở Edge Runtime — không throw ở module level
+// mà kiểm tra trong mỗi request để tránh crash toàn bộ middleware
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'fallback_secret_change_this_in_production_32chars'
+  process.env.JWT_SECRET ?? ''
 )
 
 export async function middleware(request: NextRequest) {
+  // Fail-fast nếu JWT_SECRET chưa được cấu hình
+  if (!process.env.JWT_SECRET) {
+    return NextResponse.json({ error: 'Cấu hình server thiếu JWT_SECRET' }, { status: 500 })
+  }
+
   const { pathname } = request.nextUrl
 
   // Bỏ qua static files
