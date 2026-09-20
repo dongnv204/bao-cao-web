@@ -5,12 +5,10 @@ import { useState as useLocalState } from 'react'
 import { useTabsStore } from '../tabs-store'
 import ExportButtons from '@/components/ExportButtons'
 import { cacheGet, cacheGetStale, cacheSet, cacheClear } from '@/lib/cache'
-import { GroupTotalChart, MonthTrendChart } from '@/components/charts/RecruitChart'
 import ComparePanel, { CompareRow } from '@/components/ComparePanel'
 import { exportBCTongExcel } from '@/lib/export-utils'
 import { useToast } from '@/components/Toast'
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
-import { DrilldownPanel } from '@/components/DrilldownPanel'
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -108,13 +106,6 @@ interface TabState {
   refreshing: boolean
 }
 
-interface DrillState {
-  label: string
-  color: string
-  total: number
-  rows:  StatRow[]
-}
-
 // ═══════════════════════════════════════════════════════════════════
 // COMPONENT CHÍNH
 // ═══════════════════════════════════════════════════════════════════
@@ -139,10 +130,6 @@ export default function BCTongPage() {
   const updateTab = useCallback((id: string, patch: Partial<TabState>) => {
     setTabs(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
   }, [])
-
-  // ── Drill-down state — tách riêng clean vs gốc để không bị xung đột ──
-  const [drillGroupClean, setDrillGroupClean] = useState<DrillState | null>(null)
-  const [drillGroup,      setDrillGroup]      = useState<DrillState | null>(null)
 
   // ── So sánh 2 tab ─────────────────────────────────────────────
   const [compareOpen, setCompareOpen] = useLocalState(false)
@@ -298,30 +285,6 @@ export default function BCTongPage() {
     }
   }
 
-  // Click vào bar → mở drill-down theo khu vực
-  const handleBarClick = useCallback((bar: { label: string; val: number; color: string }, _: number) => {
-    if (!data) return
-    const group = GROUPS.find(g => g.label === bar.label)
-    if (!group) return
-    const grp = data[group.key as GroupKey] as GroupData | undefined
-    setDrillGroup({
-      label: group.label, color: group.color,
-      total: grp?.total ?? bar.val, rows: grp?.byThiTruong ?? [],
-    })
-  }, [data])
-
-  // Drill-down cho dữ liệu clean (Bảng 1)
-  const handleCleanBarClick = useCallback((bar: { label: string; val: number; color: string }, _: number) => {
-    if (!data) return
-    const group = GROUPS.find(g => g.label === bar.label)
-    if (!group) return
-    const cleanKey = CLEAN_KEY[group.key as GroupKey]
-    const grp = data[cleanKey] as GroupData | undefined
-    setDrillGroupClean({
-      label: `${group.label} (Đã Lọc)`, color: group.color,
-      total: grp?.total ?? bar.val, rows: grp?.byThiTruong ?? [],
-    })
-  }, [data])
 
   const tq       = data?.tongQuan
   const cleanTq  = data?.cleanTongQuan
@@ -445,55 +408,35 @@ export default function BCTongPage() {
 
           {/* ── Bảng 1: Tổng quan 4 nhóm (Đã Lọc) ─────────────────── */}
           <Section title={`Bảng 1 — Tổng quan chuyển đổi T${String(month).padStart(2,'0')}/${year} (Đã Lọc)`} badge="Đã Lọc" badgeColor="green">
+            {!cleanTq && (
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+                ⚠️ GAS chưa trả dữ liệu đã lọc — cần cập nhật hàm <code>doGet</code> trong Apps Script để trả <code>cleanTongQuan</code>
+              </p>
+            )}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {GROUPS.map(g => {
                 const cleanKey = CLEAN_KEY[g.key as GroupKey]
                 const grp      = data![cleanKey] as GroupData | undefined
+                const val      = cleanTq?.[g.key as GroupKey]
                 return (
                   <div key={g.key} className={`rounded-xl border p-4 ${COLOR[g.color].card}`}>
-                    <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${COLOR[g.color].badge}`}>
+                    <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${COLOR[g.color].badge}`}>
                       {g.label}
                     </p>
-                    <p className="text-3xl font-bold text-slate-900">
-                      {cleanTq?.[g.key as GroupKey] ?? 0}
+                    <p className="text-3xl font-bold text-slate-900 mb-1">
+                      {val !== undefined ? val : <span className="text-slate-300 text-xl">—</span>}
                     </p>
                     {grp?.thlCount ? (
-                      <p className="text-xs text-slate-400 mt-1">
-                        (trong đó THL: {grp.thlCount})
-                      </p>
+                      <p className="text-xs text-slate-400 mb-2">(trong đó THL: {grp.thlCount})</p>
                     ) : (
-                      <p className="text-xs text-slate-400 mt-1">UV trong T{month}/{year}</p>
+                      <p className="text-xs text-slate-400 mb-2">UV trong T{month}/{year}</p>
                     )}
+                    {/* Bảng tháng nhập theo nhóm */}
+                    <MonthBreakdown rows={grp?.byMonthNhap ?? []} />
                   </div>
                 )
               })}
             </div>
-
-            {/* Biểu đồ tổng quan clean */}
-            <div className="mt-4">
-              <p className="text-xs text-slate-400 mb-2">💡 Click vào cột để xem chi tiết theo khu vực</p>
-              <GroupTotalChart
-                data={GROUPS.map(g => ({
-                  label: g.label,
-                  val:   cleanTq?.[g.key as GroupKey] ?? 0,
-                  color: BAR_COLOR[g.color] ?? '#94a3b8',
-                }))}
-                onBarClick={handleCleanBarClick}
-              />
-            </div>
-
-            {/* Drill-down panel (clean) */}
-            {drillGroupClean && (
-              <div className="mt-4">
-                <DrilldownPanel
-                  label={drillGroupClean.label}
-                  color={drillGroupClean.color}
-                  total={drillGroupClean.total}
-                  rows={drillGroupClean.rows}
-                  onClose={() => setDrillGroupClean(null)}
-                />
-              </div>
-            )}
           </Section>
 
           {/* ── Bảng 2: So sánh KÝ HĐ & DUYỆT 4 tháng (Đã Lọc) ──── */}
@@ -532,46 +475,23 @@ export default function BCTongPage() {
                 const grp = data![g.key as GroupKey] as GroupData | undefined
                 return (
                   <div key={g.key} className={`rounded-xl border p-4 ${COLOR[g.color].card}`}>
-                    <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${COLOR[g.color].badge}`}>
+                    <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${COLOR[g.color].badge}`}>
                       {g.label}
                     </p>
-                    <p className="text-3xl font-bold text-slate-900">
+                    <p className="text-3xl font-bold text-slate-900 mb-1">
                       {tq![g.key as GroupKey]}
                     </p>
                     {grp?.thlCount ? (
-                      <p className="text-xs text-slate-400 mt-1">(trong đó THL: {grp.thlCount})</p>
+                      <p className="text-xs text-slate-400 mb-2">(trong đó THL: {grp.thlCount})</p>
                     ) : (
-                      <p className="text-xs text-slate-400 mt-1">UV trong T{month}/{year}</p>
+                      <p className="text-xs text-slate-400 mb-2">UV trong T{month}/{year}</p>
                     )}
+                    {/* Bảng tháng nhập theo nhóm */}
+                    <MonthBreakdown rows={grp?.byMonthNhap ?? []} />
                   </div>
                 )
               })}
             </div>
-
-            <div className="mt-4">
-              <p className="text-xs text-slate-400 mb-2">💡 Click vào cột để xem chi tiết theo khu vực</p>
-              <GroupTotalChart
-                data={GROUPS.map(g => ({
-                  label: g.label,
-                  val:   tq![g.key as GroupKey],
-                  color: BAR_COLOR[g.color] ?? '#94a3b8',
-                }))}
-                onBarClick={handleBarClick}
-              />
-            </div>
-
-            {/* Drill-down panel (gốc) */}
-            {drillGroup && (
-              <div className="mt-4">
-                <DrilldownPanel
-                  label={drillGroup.label}
-                  color={drillGroup.color}
-                  total={drillGroup.total}
-                  rows={drillGroup.rows}
-                  onClose={() => setDrillGroup(null)}
-                />
-              </div>
-            )}
           </Section>
 
           {/* ── Bảng 4: Chi tiết từng nhóm (Gốc) ──────────────────────── */}
@@ -588,16 +508,6 @@ export default function BCTongPage() {
           {/* ── Bảng 5: Tháng nhập UV (Gốc) ────────────────────────────── */}
           <Section title="Bảng 5 — Tháng nhập UV theo nhóm phễu (Gốc)" badge="Gốc" badgeColor="slate">
             <MonthTable data={data!} />
-            <div className="mt-4">
-              <MonthTrendChart
-                months={Array.from({ length: 12 }, (_, i) => i + 1)}
-                groups={GROUPS.map(g => ({
-                  label: g.label,
-                  color: BAR_COLOR[g.color] ?? '#94a3b8',
-                  data:  (data![g.key as GroupKey] as GroupData | undefined)?.byMonthNhap ?? [],
-                }))}
-              />
-            </div>
           </Section>
 
           {/* ── Bảng 6: So sánh KÝ HĐ & DUYỆT 4 tháng (Gốc) ──────────── */}
@@ -711,6 +621,34 @@ function GroupCard({ label, color, grp }: { label: string; color: string; grp: G
         </div>
       )}
     </div>
+  )
+}
+
+/** Mini-bảng tháng nhập UV cho 1 nhóm (hiển thị trong từng tile) */
+function MonthBreakdown({ rows }: { rows: MonthRow[] }) {
+  if (rows.length === 0) return null
+  const total = rows.reduce((s, r) => s + r.val, 0)
+  return (
+    <table className="w-full text-xs mt-2 border-t border-slate-200/60 pt-1">
+      <thead>
+        <tr>
+          <th className="text-left font-medium text-slate-400 py-0.5">Tháng nhập</th>
+          <th className="text-right font-medium text-slate-400 py-0.5">UV</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(r => (
+          <tr key={r.month} className="border-t border-slate-100/80">
+            <td className="py-0.5 text-slate-600">T{String(r.month).padStart(2,'0')}</td>
+            <td className="py-0.5 text-right font-semibold text-slate-800">{r.val}</td>
+          </tr>
+        ))}
+        <tr className="border-t border-slate-200">
+          <td className="pt-1 font-semibold text-slate-500">TỔNG</td>
+          <td className="pt-1 text-right font-bold text-slate-900">{total}</td>
+        </tr>
+      </tbody>
+    </table>
   )
 }
 
