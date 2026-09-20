@@ -16,33 +16,36 @@ async function _rawFetch(baseUrl: string, action: string, params?: Record<string
   return res.json()
 }
 
-// ── BC Ngày — cache 5 phút, tag: bc-ngay ─────────────────────────────
+// ── BC Ngày — cache 60 phút, tag: bc-ngay ─────────────────────────────
+// Key bao gồm day/month/year để mỗi ngày có cache riêng
 export const getTuyenDungReport = unstable_cache(
   async (day: number, month: number, year: number) =>
     _rawFetch(APPS_SCRIPT_URL, 'tuyen-dung', {
       day: String(day), month: String(month), year: String(year),
     }),
-  ['bc-ngay'],
+  ['bc-ngay', 'day', 'month', 'year'],
   { revalidate: 3600, tags: ['bc-ngay'] }
 )
 
-// ── BC Tháng — cache 15 phút, tag: bc-thang ──────────────────────────
+// ── BC Tháng — cache 60 phút, tag: bc-thang ──────────────────────────
+// Key bao gồm month/year để mỗi tháng có cache riêng
 export const getBCThangReport = unstable_cache(
   async (month: number, year: number) =>
     _rawFetch(APPS_SCRIPT_URL_BC_THANG, 'bc-thang', {
       month: String(month), year: String(year),
     }),
-  ['bc-thang'],
+  ['bc-thang', 'month', 'year'],
   { revalidate: 3600, tags: ['bc-thang'] }
 )
 
-// ── BC Tổng — cache 15 phút, tag: bc-tong ────────────────────────────
+// ── BC Tổng — cache 60 phút, tag: bc-tong ────────────────────────────
+// Key bao gồm month/year để mỗi tháng có cache riêng
 export const getBCTongReport = unstable_cache(
   async (month: number, year: number) =>
     _rawFetch(APPS_SCRIPT_URL_BC_TONG, 'bc-tong', {
       month: String(month), year: String(year),
     }),
-  ['bc-tong'],
+  ['bc-tong', 'month', 'year'],
   { revalidate: 3600, tags: ['bc-tong'] }
 )
 
