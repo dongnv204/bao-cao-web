@@ -90,9 +90,20 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { id, password, ...updates } = body
+  const { id, password, full_name, role, active } = body
 
   if (!id) return NextResponse.json({ error: 'Thiếu id người dùng' }, { status: 400 })
+
+  // Chỉ whitelist các field được phép update — ngăn inject tùy ý
+  const updates: Record<string, unknown> = {}
+  if (full_name !== undefined) updates.full_name = String(full_name).trim()
+  if (role !== undefined) {
+    if (!['admin', 'manager', 'viewer'].includes(role)) {
+      return NextResponse.json({ error: 'Quyền không hợp lệ' }, { status: 400 })
+    }
+    updates.role = role
+  }
+  if (active !== undefined) updates.active = Boolean(active)
 
   // Nếu đổi mật khẩu → hash trước
   if (password) {
@@ -100,6 +111,10 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Mật khẩu tối thiểu 8 ký tự' }, { status: 400 })
     }
     updates.password_hash = await bcrypt.hash(password, 12)
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: 'Không có trường nào được cập nhật' }, { status: 400 })
   }
 
   const supabase = getSupabase()
