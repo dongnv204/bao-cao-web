@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySession } from '@/lib/auth'
-import { getStatsByDay, getStatsByMonth, getDailyListByMonth } from '@/lib/supabase-candidates'
+import { getMonthBundle } from '@/lib/supabase-candidates'
 
 /**
  * API BC Ngày — đọc từ Supabase (đã sync từ Google Sheets)
@@ -27,14 +27,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Thống kê tháng (tính đến ngày nếu có)
-    const statsThang = await getStatsByMonth(month, year, day)
-
-    // Thống kê từng ngày trong tháng (cho biểu đồ trend)
-    const dailyList  = await getDailyListByMonth(month, year)
-
-    // Thống kê ngày hôm nay (nếu có day param)
-    const statsNgay  = day ? await getStatsByDay(day, month, year) : null
+    // 1 query duy nhất lấy toàn tháng, tính cả stats ngày + tháng + dailyList
+    const { statsThang, statsNgay, dailyList } = await getMonthBundle(month, year, day)
 
     return NextResponse.json({
       ok: true,
