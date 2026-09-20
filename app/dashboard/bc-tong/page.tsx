@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState as useLocalState } from 'react'
 import { useTabsStore } from '../tabs-store'
-import { useMemo, useState as useLocalState } from 'react'
 import ExportButtons from '@/components/ExportButtons'
 import { cacheGet, cacheGetStale, cacheSet, cacheClear } from '@/lib/cache'
 import { GroupTotalChart, MonthTrendChart } from '@/components/charts/RecruitChart'
@@ -12,15 +12,30 @@ import { useToast } from '@/components/Toast'
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 import { DrilldownPanel } from '@/components/DrilldownPanel'
 
-// ── Types ─────────────────────────────────────────────────────────────
-interface StatRow   { label: string; val: number }
-interface MonthRow  { month: number; val: number }
+// ═══════════════════════════════════════════════════════════════════
+// TYPES
+// Cấu trúc mới v1.36+ — Phần 1 (Đã Lọc) + Phần 2 (Gốc)
+// Web API GAS cần trả về cả cleanTongQuan, cleanDuyet/kyHD/daoTao/dauPV,
+// cleanMonthCompare, monthCompare và thlCount để hiển thị Bảng 1-2 & 6.
+// ═══════════════════════════════════════════════════════════════════
+
+interface StatRow  { label: string; val: number }
+interface MonthRow { month: number; val: number }
 
 interface GroupData {
   total:       number
   byMonthNhap: MonthRow[]
   byThiTruong: StatRow[]
   byTrangThai: StatRow[]
+  thlCount?:   number    // v1.38: số UV từ nhóm THL
+}
+
+/** Một điểm dữ liệu trong bảng so sánh 4 tháng */
+interface MonthCompareItem {
+  month: number   // 1-12
+  year:  number
+  kyHD:  number
+  duyet: number
 }
 
 interface BCTongData {
@@ -29,48 +44,70 @@ interface BCTongData {
   updatedAt: string
   empty:     boolean
   message?:  string
+
+  // ── Phần 2: Gốc (Bảng 3-6) — backward-compatible ──────────────
   tongQuan?: { duyet: number; kyHD: number; daoTao: number; dauPV: number }
   duyet?:    GroupData
   kyHD?:     GroupData
   daoTao?:   GroupData
   dauPV?:    GroupData
+  monthCompare?: MonthCompareItem[]   // Bảng 6: 4 tháng gần nhất (Gốc)
+
+  // ── Phần 1: Đã Lọc (Bảng 1-2) — mới từ v1.36 ─────────────────
+  cleanTongQuan?: { duyet: number; kyHD: number; daoTao: number; dauPV: number }
+  cleanDuyet?:    GroupData
+  cleanKyHD?:     GroupData
+  cleanDaoTao?:   GroupData
+  cleanDauPV?:    GroupData
+  cleanMonthCompare?: MonthCompareItem[]  // Bảng 2: 4 tháng gần nhất (Đã Lọc)
 }
 
-// ── Config nhóm ───────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// CONFIG NHÓM & MÀU SẮC
+// ═══════════════════════════════════════════════════════════════════
+
 const GROUPS = [
-  { key: 'duyet',  label: 'Duyệt',    color: 'blue'   },
-  { key: 'kyHD',   label: 'Ký HĐ',    color: 'orange' },
-  { key: 'daoTao', label: 'Đào Tạo',  color: 'green'  },
-  { key: 'dauPV',  label: 'Đậu PV',   color: 'indigo' },
+  { key: 'duyet',  label: 'Duyệt',   color: 'blue'   },
+  { key: 'kyHD',   label: 'Ký HĐ',   color: 'orange' },
+  { key: 'daoTao', label: 'Đào Tạo', color: 'green'  },
+  { key: 'dauPV',  label: 'Đậu PV',  color: 'indigo' },
 ] as const
 
 type GroupKey = 'duyet' | 'kyHD' | 'daoTao' | 'dauPV'
 
-// ── Màu sắc ───────────────────────────────────────────────────────────
-const COLOR: Record<string, { card: string; badge: string; bar: string }> = {
-  blue:   { card: 'bg-blue-50 border-blue-100',   badge: 'text-blue-700',   bar: 'bg-blue-500'   },
-  orange: { card: 'bg-orange-50 border-orange-100', badge: 'text-orange-700', bar: 'bg-orange-500' },
-  green:  { card: 'bg-emerald-50 border-emerald-100', badge: 'text-emerald-700', bar: 'bg-emerald-500' },
-  indigo: { card: 'bg-indigo-50 border-indigo-100', badge: 'text-indigo-700', bar: 'bg-indigo-500' },
+/** Map tên nhóm gốc → tên nhóm clean */
+const CLEAN_KEY: Record<GroupKey, keyof BCTongData> = {
+  duyet:  'cleanDuyet',
+  kyHD:   'cleanKyHD',
+  daoTao: 'cleanDaoTao',
+  dauPV:  'cleanDauPV',
 }
 
-// Màu hex cho biểu đồ Recharts
+const COLOR: Record<string, { card: string; badge: string; bar: string }> = {
+  blue:   { card: 'bg-blue-50 border-blue-100',      badge: 'text-blue-700',    bar: 'bg-blue-500'    },
+  orange: { card: 'bg-orange-50 border-orange-100',  badge: 'text-orange-700',  bar: 'bg-orange-500'  },
+  green:  { card: 'bg-emerald-50 border-emerald-100',badge: 'text-emerald-700', bar: 'bg-emerald-500' },
+  indigo: { card: 'bg-indigo-50 border-indigo-100',  badge: 'text-indigo-700',  bar: 'bg-indigo-500'  },
+}
+
 const BAR_COLOR: Record<string, string> = {
   blue: '#3b82f6', orange: '#f97316', green: '#10b981', indigo: '#6366f1',
 }
 
-// ── Multi-tab state ────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// MULTI-TAB STATE
+// ═══════════════════════════════════════════════════════════════════
+
 interface TabState {
-  id: string
-  month: number
-  year: number
-  data: BCTongData | null
-  loading: boolean
-  error: string
+  id:         string
+  month:      number
+  year:       number
+  data:       BCTongData | null
+  loading:    boolean
+  error:      string
   refreshing: boolean
 }
 
-// ── Trạng thái drill-down ──────────────────────────────────────────────
 interface DrillState {
   label: string
   color: string
@@ -78,13 +115,17 @@ interface DrillState {
   rows:  StatRow[]
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// COMPONENT CHÍNH
+// ═══════════════════════════════════════════════════════════════════
+
 export default function BCTongPage() {
   const now    = new Date()
-  const nextId  = useRef(2)
+  const nextId = useRef(2)
   const { getPage, savePage } = useTabsStore()
   const { toast, dismiss }    = useToast()
 
-  // ── Tabs — khôi phục từ store nếu đã từng mở trang này ───────────────
+  // ── Tabs — khôi phục từ store ──────────────────────────────────
   const [tabs, setTabs] = useState<TabState[]>(() => {
     const s = getPage('bc-tong')
     if (s && s.tabs.length > 0) return s.tabs as TabState[]
@@ -99,10 +140,11 @@ export default function BCTongPage() {
     setTabs(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
   }, [])
 
-  // ── Drill-down state ───────────────────────────────────────────────
-  const [drillGroup, setDrillGroup] = useState<DrillState | null>(null)
+  // ── Drill-down state — tách riêng clean vs gốc để không bị xung đột ──
+  const [drillGroupClean, setDrillGroupClean] = useState<DrillState | null>(null)
+  const [drillGroup,      setDrillGroup]      = useState<DrillState | null>(null)
 
-  // ── So sánh 2 tab ─────────────────────────────────────────────────
+  // ── So sánh 2 tab ─────────────────────────────────────────────
   const [compareOpen, setCompareOpen] = useLocalState(false)
   const [compareA, setCompareA]       = useLocalState(() => tabs[0]?.id ?? '1')
   const [compareB, setCompareB]       = useLocalState(() => tabs[1]?.id ?? '1')
@@ -113,26 +155,25 @@ export default function BCTongPage() {
     if (!dA?.tongQuan || !dB?.tongQuan) return []
     const a = dA.tongQuan, b = dB.tongQuan
     const rows: CompareRow[] = [
-      { label: 'Tổng quan', a: null, b: null, isSeparator: true },
-      { label: 'Duyệt',    a: a.duyet  ?? 0, b: b.duyet  ?? 0 },
-      { label: 'Ký HĐ',    a: a.kyHD   ?? 0, b: b.kyHD   ?? 0 },
-      { label: 'Đào Tạo',  a: a.daoTao ?? 0, b: b.daoTao ?? 0 },
-      { label: 'Đậu PV',   a: a.dauPV  ?? 0, b: b.dauPV  ?? 0 },
+      { label: 'Tổng quan (Gốc)', a: null, b: null, isSeparator: true },
+      { label: 'Duyệt',   a: a.duyet  ?? 0, b: b.duyet  ?? 0 },
+      { label: 'Ký HĐ',   a: a.kyHD   ?? 0, b: b.kyHD   ?? 0 },
+      { label: 'Đào Tạo', a: a.daoTao ?? 0, b: b.daoTao ?? 0 },
+      { label: 'Đậu PV',  a: a.dauPV  ?? 0, b: b.dauPV  ?? 0 },
     ]
-    const groups: { key: 'duyet'|'kyHD'|'daoTao'|'dauPV'; label: string }[] = [
-      { key: 'duyet', label: 'Duyệt' }, { key: 'kyHD', label: 'Ký HĐ' },
-      { key: 'daoTao', label: 'Đào Tạo' }, { key: 'dauPV', label: 'Đậu PV' },
-    ]
-    for (const g of groups) {
-      const gA = (dA as any)[g.key], gB = (dB as any)[g.key]
-      if (!gA && !gB) continue
-      rows.push({ label: g.label + ' — Chi tiết', a: null, b: null, isSeparator: true })
-      rows.push({ label: 'Tổng', a: gA?.total ?? 0, b: gB?.total ?? 0 })
+    // Clean data (nếu có)
+    if (dA.cleanTongQuan && dB.cleanTongQuan) {
+      const ca = dA.cleanTongQuan, cb = dB.cleanTongQuan
+      rows.push({ label: 'Tổng quan (Đã Lọc)', a: null, b: null, isSeparator: true })
+      rows.push({ label: 'Duyệt (lọc)',   a: ca.duyet  ?? 0, b: cb.duyet  ?? 0 })
+      rows.push({ label: 'Ký HĐ (lọc)',   a: ca.kyHD   ?? 0, b: cb.kyHD   ?? 0 })
+      rows.push({ label: 'Đào Tạo (lọc)', a: ca.daoTao ?? 0, b: cb.daoTao ?? 0 })
+      rows.push({ label: 'Đậu PV (lọc)',  a: ca.dauPV  ?? 0, b: cb.dauPV  ?? 0 })
     }
     return rows
   }, [tabs, compareA, compareB])
 
-  // Alias — JSX bên dưới không cần sửa
+  // Alias cho tab đang active
   const activeTab  = tabs.find(t => t.id === activeTabId) ?? tabs[0]
   const month      = activeTab.month
   const year       = activeTab.year
@@ -141,7 +182,7 @@ export default function BCTongPage() {
   const error      = activeTab.error
   const refreshing = activeTab.refreshing
 
-  // Fetch dữ liệu mới từ server (dùng nội bộ)
+  // ── Fetch từ server ────────────────────────────────────────────
   const _fetchFromServer = useCallback(async (m: number, y: number, tabId: string) => {
     const res = await fetch(`/api/reports/bc-tong?month=${m}&year=${y}`)
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`) }
@@ -151,18 +192,15 @@ export default function BCTongPage() {
     return d
   }, [updateTab])
 
-  // Tải dữ liệu — SWR: nếu có stale cache thì show ngay, fetch mới ở background
+  // ── SWR: cache còn hạn → dùng ngay; stale → show + refetch ngầm ──
   const fetchData = useCallback(async (m: number, y: number, tabId: string, skipCache = false) => {
     if (!skipCache) {
-      // Cache còn valid → dùng ngay
       const fresh = cacheGet<BCTongData>(`bc-tong:${m}:${y}`)
       if (fresh) {
         updateTab(tabId, { data: fresh, loading: false, error: '' })
         toast('info', 'Từ cache', `Dữ liệu T${m}/${y} · còn hạn 30 phút`)
         return
       }
-
-      // Cache expired nhưng có stale data → show ngay + fetch mới ngầm
       const stale = cacheGetStale<BCTongData>(`bc-tong:${m}:${y}`)
       if (stale) {
         updateTab(tabId, { data: stale, loading: false, refreshing: true, error: '' })
@@ -174,8 +212,6 @@ export default function BCTongPage() {
         return
       }
     }
-
-    // Không có cache gì → show spinner
     updateTab(tabId, { loading: true, error: '', data: null })
     const loadingId = toast('loading', `Đang tải T${m}/${y}...`)
     try {
@@ -201,7 +237,7 @@ export default function BCTongPage() {
     updateTab(id, { refreshing: false })
   }, [activeTabId, activeTab, updateTab, fetchData])
 
-  // ── Supabase Realtime — tự động refresh khi Apps Script gửi tín hiệu ──
+  // ── Supabase Realtime — tự động refresh khi GAS gửi tín hiệu ──
   useRealtimeRefresh(
     useCallback(() => {
       toast('info', 'Dữ liệu mới!', 'Google Sheets vừa cập nhật — đang tải lại...')
@@ -210,22 +246,21 @@ export default function BCTongPage() {
     'bc-tong'
   )
 
-  // Đồng bộ tabs → store mỗi khi thay đổi
+  // Đồng bộ tabs → store
   useEffect(() => { savePage('bc-tong', { tabs, activeTabId }) }, [tabs, activeTabId, savePage])
 
-  // Fix nextId khi khôi phục từ store
   useEffect(() => {
     const maxId = Math.max(...tabs.map(t => Number(t.id)))
     if (maxId >= nextId.current) nextId.current = maxId + 1
   }, [])
 
-  // Tải lần đầu — bỏ qua nếu tab đã có data (khôi phục từ store)
+  // Tải lần đầu
   useEffect(() => {
     const first = tabs[0]
     if (!first.data && !first.loading) fetchData(first.month, first.year, first.id)
   }, [])
 
-  // Deep link — đọc ?month=&year= từ URL khi load
+  // Deep link — đọc ?month=&year= từ URL
   useEffect(() => {
     const p = new URLSearchParams(window.location.search)
     const m = Number(p.get('month')), y = Number(p.get('year'))
@@ -235,14 +270,14 @@ export default function BCTongPage() {
     }
   }, [])
 
-  // Deep link — cập nhật URL khi tab thay đổi
+  // Cập nhật URL khi tab thay đổi
   useEffect(() => {
     const u = new URLSearchParams()
     u.set('month', String(month)); u.set('year', String(year))
     window.history.replaceState(null, '', '?' + u.toString())
   }, [month, year])
 
-  // Thêm tab mới
+  // ── Tab management ────────────────────────────────────────────
   const addTab = () => {
     const id = String(nextId.current++)
     const m  = now.getMonth() + 1
@@ -253,7 +288,6 @@ export default function BCTongPage() {
     fetchData(m, y, id)
   }
 
-  // Đóng tab (không đóng tab cuối)
   const closeTab = (id: string) => {
     const next = tabs.filter(t => t.id !== id)
     if (next.length === 0) return
@@ -264,35 +298,52 @@ export default function BCTongPage() {
     }
   }
 
-  // Click vào bar → mở drill-down chi tiết khu vực
-  const handleBarClick = useCallback((bar: { label: string; val: number; color: string }, _index: number) => {
+  // Click vào bar → mở drill-down theo khu vực
+  const handleBarClick = useCallback((bar: { label: string; val: number; color: string }, _: number) => {
     if (!data) return
     const group = GROUPS.find(g => g.label === bar.label)
     if (!group) return
     const grp = data[group.key as GroupKey] as GroupData | undefined
     setDrillGroup({
-      label: group.label,
-      color: group.color,
-      total: grp?.total ?? bar.val,
-      rows:  grp?.byThiTruong ?? [],
+      label: group.label, color: group.color,
+      total: grp?.total ?? bar.val, rows: grp?.byThiTruong ?? [],
     })
   }, [data])
 
-  const tq = data?.tongQuan
+  // Drill-down cho dữ liệu clean (Bảng 1)
+  const handleCleanBarClick = useCallback((bar: { label: string; val: number; color: string }, _: number) => {
+    if (!data) return
+    const group = GROUPS.find(g => g.label === bar.label)
+    if (!group) return
+    const cleanKey = CLEAN_KEY[group.key as GroupKey]
+    const grp = data[cleanKey] as GroupData | undefined
+    setDrillGroupClean({
+      label: `${group.label} (Đã Lọc)`, color: group.color,
+      total: grp?.total ?? bar.val, rows: grp?.byThiTruong ?? [],
+    })
+  }, [data])
 
+  const tq      = data?.tongQuan
+  const cleanTq = data?.cleanTongQuan
+  const hasClean = !!cleanTq
+  const hasData  = !!tq
+
+  // ═══════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════
   return (
     <div className="space-y-6">
+
       {/* ── TAB BAR ── */}
       <div className="flex items-center gap-1 bg-slate-100 rounded-xl px-2 py-1.5 overflow-x-auto mb-1">
         {tabs.map(tab => {
           const isActive = tab.id === activeTabId
-          const label = `T${tab.month}/${tab.year}`
           return (
             <div key={tab.id}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition whitespace-nowrap
                 ${isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'}`}
               onClick={() => setActiveTabId(tab.id)}>
-              <span>{tab.loading ? '⏳' : '📊'} {label}</span>
+              <span>{tab.loading ? '⏳' : '📊'} T{tab.month}/{tab.year}</span>
               {tabs.length > 1 && (
                 <button onClick={e => { e.stopPropagation(); closeTab(tab.id) }}
                   className="ml-1 text-slate-400 hover:text-red-400 transition leading-none">×</button>
@@ -310,24 +361,29 @@ export default function BCTongPage() {
         )}
       </div>
 
-      {/* Tiêu đề + bộ lọc */}
+      {/* ── Tiêu đề & bộ lọc ── */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Báo Cáo Tổng {String(month).padStart(2, '0')}/{activeTab?.year ?? year}</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            Báo Cáo Tổng {String(month).padStart(2, '0')}/{year}
+          </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Thống kê UV đậu PV / đào tạo / ký HĐ / duyệt trong tháng
+            Thống kê UV đậu PV / đào tạo / ký HĐ / duyệt
             {data && !data.empty && ` · Cập nhật: ${data.updatedAt}`}
+            {refreshing && <span className="ml-2 text-amber-500">↻ Đang làm mới...</span>}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <select value={month} onChange={e => { const m = Number(e.target.value); updateTab(activeTabId, { month: m }); fetchData(m, activeTab.year, activeTabId) }}
+          <select value={month}
+            onChange={e => { const m = Number(e.target.value); updateTab(activeTabId, { month: m }); fetchData(m, activeTab.year, activeTabId) }}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
               <option key={m} value={m}>Tháng {m}</option>
             ))}
           </select>
-          <select value={year} onChange={e => { const y = Number(e.target.value); updateTab(activeTabId, { year: y }); fetchData(activeTab.month, y, activeTabId) }}
+          <select value={year}
+            onChange={e => { const y = Number(e.target.value); updateTab(activeTabId, { year: y }); fetchData(activeTab.month, y, activeTabId) }}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
@@ -347,7 +403,7 @@ export default function BCTongPage() {
         </div>
       </div>
 
-      {/* Trạng thái */}
+      {/* ── Trạng thái loading / error / empty ── */}
       {loading && (
         <div className="flex items-center justify-center py-20 text-slate-400">
           <svg className="animate-spin w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24">
@@ -358,40 +414,151 @@ export default function BCTongPage() {
         </div>
       )}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-red-700 text-sm">⚠️ {error}</div>
+        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-red-700 text-sm">
+          ⚠️ {error}
+        </div>
       )}
       {data?.empty && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-amber-700 text-sm">📭 {data.message}</div>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-amber-700 text-sm">
+          📭 {data.message}
+        </div>
       )}
 
-      {/* Bảng 1 — Tổng quan 4 nhóm */}
-      {tq && (
+      {/* ══════════════════════════════════════════════════════════
+          PHẦN 1: SỐ LIỆU ĐÃ LỌC (Bảng 1 & 2)
+          Dữ liệu deduplicate: loại UV trùng SĐT + "TX Nghỉ Việc" + "Nhập lại"
+          ══════════════════════════════════════════════════════════ */}
+      {hasClean && (
         <>
-          <Section title="Bảng 1 — Tổng quan theo nhóm phễu">
+          {/* Banner phần 1 */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-green-200" />
+            <span className="px-4 py-1.5 bg-green-50 border border-green-200 rounded-full text-xs font-semibold text-green-700 tracking-wide">
+              ✅ SỐ LIỆU ĐÃ LỌC
+            </span>
+            <div className="flex-1 h-px bg-green-200" />
+          </div>
+          <p className="text-xs text-slate-400 -mt-3 text-center">
+            Đã loại UV trùng SĐT xuyên nhóm · Đã loại trạng thái "TX Nghỉ Việc" và "Nhập lại"
+          </p>
+
+          {/* ── Bảng 1: Tổng quan 4 nhóm (Đã Lọc) ─────────────────── */}
+          <Section title={`Bảng 1 — Tổng quan chuyển đổi T${String(month).padStart(2,'0')}/${year} (Đã Lọc)`} badge="Đã Lọc" badgeColor="green">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {GROUPS.map(g => (
-                <div key={g.key} className={`rounded-xl border p-4 ${COLOR[g.color].card}`}>
-                  <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${COLOR[g.color].badge}`}>{g.label}</p>
-                  <p className="text-3xl font-bold text-slate-900">{tq[g.key as GroupKey]}</p>
-                  <p className="text-xs text-slate-400 mt-1">UV trong tháng {month}/{year}</p>
-                </div>
-              ))}
+              {GROUPS.map(g => {
+                const cleanKey = CLEAN_KEY[g.key as GroupKey]
+                const grp      = data![cleanKey] as GroupData | undefined
+                return (
+                  <div key={g.key} className={`rounded-xl border p-4 ${COLOR[g.color].card}`}>
+                    <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${COLOR[g.color].badge}`}>
+                      {g.label}
+                    </p>
+                    <p className="text-3xl font-bold text-slate-900">
+                      {cleanTq![g.key as GroupKey]}
+                    </p>
+                    {grp?.thlCount ? (
+                      <p className="text-xs text-slate-400 mt-1">
+                        (trong đó THL: {grp.thlCount})
+                      </p>
+                    ) : (
+                      <p className="text-xs text-slate-400 mt-1">UV trong T{month}/{year}</p>
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
-            {/* GroupTotalChart — click để xem drill-down khu vực */}
+            {/* Biểu đồ tổng quan clean */}
             <div className="mt-4">
               <p className="text-xs text-slate-400 mb-2">💡 Click vào cột để xem chi tiết theo khu vực</p>
               <GroupTotalChart
                 data={GROUPS.map(g => ({
                   label: g.label,
-                  val:   tq[g.key as GroupKey],
+                  val:   cleanTq![g.key as GroupKey],
+                  color: BAR_COLOR[g.color] ?? '#94a3b8',
+                }))}
+                onBarClick={handleCleanBarClick}
+              />
+            </div>
+
+            {/* Drill-down panel (clean) */}
+            {drillGroupClean && (
+              <div className="mt-4">
+                <DrilldownPanel
+                  label={drillGroupClean.label}
+                  color={drillGroupClean.color}
+                  total={drillGroupClean.total}
+                  rows={drillGroupClean.rows}
+                  onClose={() => setDrillGroupClean(null)}
+                />
+              </div>
+            )}
+          </Section>
+
+          {/* ── Bảng 2: So sánh KÝ HĐ & DUYỆT 4 tháng (Đã Lọc) ──── */}
+          {data?.cleanMonthCompare && data.cleanMonthCompare.length > 0 && (
+            <Section title="Bảng 2 — So sánh Ký HĐ & Duyệt 4 tháng gần nhất (Đã Lọc)" badge="Đã Lọc" badgeColor="green">
+              <MonthCompareTable items={data.cleanMonthCompare} />
+            </Section>
+          )}
+        </>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════
+          DIVIDER — PHẦN 1 / PHẦN 2
+          ══════════════════════════════════════════════════════════ */}
+      {(hasClean || hasData) && (
+        <div className="flex items-center gap-3 my-2">
+          <div className="flex-1 h-px bg-slate-300" />
+          <span className="px-4 py-1.5 bg-slate-100 border border-slate-300 rounded-full text-xs font-semibold text-slate-500 tracking-wide">
+            📊 SỐ LIỆU GỐC
+          </span>
+          <div className="flex-1 h-px bg-slate-300" />
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════
+          PHẦN 2: SỐ LIỆU GỐC (Bảng 3-6)
+          Toàn bộ dữ liệu chưa lọc, bao gồm THL
+          ══════════════════════════════════════════════════════════ */}
+      {hasData && (
+        <>
+          {/* ── Bảng 3: Tổng quan 4 nhóm (Gốc) ──────────────────────── */}
+          <Section title={`Bảng 3 — Tổng quan T${String(month).padStart(2,'0')}/${year} (Gốc)`} badge="Gốc" badgeColor="slate">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {GROUPS.map(g => {
+                const grp = data![g.key as GroupKey] as GroupData | undefined
+                return (
+                  <div key={g.key} className={`rounded-xl border p-4 ${COLOR[g.color].card}`}>
+                    <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${COLOR[g.color].badge}`}>
+                      {g.label}
+                    </p>
+                    <p className="text-3xl font-bold text-slate-900">
+                      {tq![g.key as GroupKey]}
+                    </p>
+                    {grp?.thlCount ? (
+                      <p className="text-xs text-slate-400 mt-1">(trong đó THL: {grp.thlCount})</p>
+                    ) : (
+                      <p className="text-xs text-slate-400 mt-1">UV trong T{month}/{year}</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-4">
+              <p className="text-xs text-slate-400 mb-2">💡 Click vào cột để xem chi tiết theo khu vực</p>
+              <GroupTotalChart
+                data={GROUPS.map(g => ({
+                  label: g.label,
+                  val:   tq![g.key as GroupKey],
                   color: BAR_COLOR[g.color] ?? '#94a3b8',
                 }))}
                 onBarClick={handleBarClick}
               />
             </div>
 
-            {/* Drill-down panel — hiện khi click vào bar */}
+            {/* Drill-down panel (gốc) */}
             {drillGroup && (
               <div className="mt-4">
                 <DrilldownPanel
@@ -405,36 +572,42 @@ export default function BCTongPage() {
             )}
           </Section>
 
-          {/* Bảng 2 — Chi tiết từng nhóm */}
-          <Section title="Bảng 2 — Chi tiết theo nhóm">
+          {/* ── Bảng 4: Chi tiết từng nhóm (Gốc) ──────────────────────── */}
+          <Section title="Bảng 4 — Chi tiết theo nhóm (Gốc)" badge="Gốc" badgeColor="slate">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {GROUPS.map(g => {
-                const grp = data[g.key as GroupKey] as GroupData | undefined
+                const grp = data![g.key as GroupKey] as GroupData | undefined
                 if (!grp || grp.total === 0) return null
-                return (
-                  <GroupCard key={g.key} label={g.label} color={g.color} grp={grp} />
-                )
+                return <GroupCard key={g.key} label={g.label} color={g.color} grp={grp} />
               })}
             </div>
           </Section>
 
-          {/* Bảng 3 — Tháng nhập UV tích lũy (byMonthNhap tất cả nhóm) */}
-          <Section title="Bảng 3 — Tháng nhập UV (theo nhóm phễu)">
-            <MonthTable data={data} />
+          {/* ── Bảng 5: Tháng nhập UV (Gốc) ────────────────────────────── */}
+          <Section title="Bảng 5 — Tháng nhập UV theo nhóm phễu (Gốc)" badge="Gốc" badgeColor="slate">
+            <MonthTable data={data!} />
             <div className="mt-4">
               <MonthTrendChart
-                months={Array.from({length: 12}, (_, i) => i + 1)}
+                months={Array.from({ length: 12 }, (_, i) => i + 1)}
                 groups={GROUPS.map(g => ({
                   label: g.label,
                   color: BAR_COLOR[g.color] ?? '#94a3b8',
-                  data: (data[g.key as GroupKey] as GroupData | undefined)?.byMonthNhap ?? []
+                  data:  (data![g.key as GroupKey] as GroupData | undefined)?.byMonthNhap ?? [],
                 }))}
               />
             </div>
           </Section>
+
+          {/* ── Bảng 6: So sánh KÝ HĐ & DUYỆT 4 tháng (Gốc) ──────────── */}
+          {data?.monthCompare && data.monthCompare.length > 0 && (
+            <Section title="Bảng 6 — So sánh Ký HĐ & Duyệt 4 tháng gần nhất (Gốc)" badge="Gốc" badgeColor="slate">
+              <MonthCompareTable items={data.monthCompare} />
+            </Section>
+          )}
         </>
       )}
 
+      {/* ── Compare Panel ── */}
       {compareOpen && (
         <ComparePanel
           tabs={tabs.map(t => ({ id: t.id, label: `T${t.month}/${t.year}`, hasData: !!t.data }))}
@@ -448,7 +621,39 @@ export default function BCTongPage() {
   )
 }
 
-// ── GroupCard ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// SUB-COMPONENTS
+// ═══════════════════════════════════════════════════════════════════
+
+/** Section wrapper với badge nhãn dữ liệu */
+function Section({
+  title, children, badge, badgeColor,
+}: {
+  title: string
+  children: React.ReactNode
+  badge?: string
+  badgeColor?: 'green' | 'slate'
+}) {
+  const badgeCls = badgeColor === 'green'
+    ? 'bg-green-100 text-green-700 border border-green-200'
+    : 'bg-slate-100 text-slate-500 border border-slate-200'
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
+        {badge && (
+          <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${badgeCls}`}>
+            {badge}
+          </span>
+        )}
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  )
+}
+
+/** Card chi tiết 1 nhóm (byTrangThai + byThiTruong) */
 function GroupCard({ label, color, grp }: { label: string; color: string; grp: GroupData }) {
   const c     = COLOR[color]
   const topTT = grp.byTrangThai.slice(0, 8)
@@ -458,7 +663,14 @@ function GroupCard({ label, color, grp }: { label: string; color: string; grp: G
     <div className={`rounded-xl border p-4 ${c.card}`}>
       <div className="flex items-center justify-between mb-3">
         <span className={`text-sm font-bold ${c.badge}`}>{label}</span>
-        <span className={`text-xl font-bold ${c.badge}`}>{grp.total}</span>
+        <div className="flex items-center gap-2">
+          {grp.thlCount ? (
+            <span className="text-xs text-slate-400 bg-white/60 rounded px-1.5 py-0.5">
+              THL: {grp.thlCount}
+            </span>
+          ) : null}
+          <span className={`text-xl font-bold ${c.badge}`}>{grp.total}</span>
+        </div>
       </div>
 
       {topTT.length > 0 && (
@@ -499,7 +711,7 @@ function GroupCard({ label, color, grp }: { label: string; color: string; grp: G
   )
 }
 
-// ── MonthTable — tháng nhập UV cross nhóm ────────────────────────────
+/** Bảng tháng nhập UV cross nhóm */
 function MonthTable({ data }: { data: BCTongData }) {
   const monthSet = new Set<number>()
   GROUPS.forEach(g => {
@@ -546,14 +758,84 @@ function MonthTable({ data }: { data: BCTongData }) {
   )
 }
 
-// ── Section wrapper ───────────────────────────────────────────────────
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/** Bảng so sánh KÝ HĐ & DUYỆT theo 4 tháng gần nhất (Bảng 2 & Bảng 6) */
+function MonthCompareTable({ items }: { items: MonthCompareItem[] }) {
+  const sorted = [...items].sort((a, b) => {
+    if (a.year !== b.year) return a.year - b.year
+    return a.month - b.month
+  })
+
+  const maxVal = Math.max(...sorted.flatMap(r => [r.kyHD, r.duyet]), 1)
+
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-3 border-b border-slate-100 dark:bg-blue-900 dark:border-blue-800">
-        <h2 className="text-sm font-semibold text-slate-700 dark:text-white">{title}</h2>
+    <div className="space-y-4">
+      {/* Bảng số liệu */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100">
+              <th className="text-left py-2 px-3 text-slate-500 font-medium">Tháng</th>
+              <th className="text-right py-2 px-3 font-medium text-orange-600">Ký HĐ</th>
+              <th className="text-right py-2 px-3 font-medium text-blue-600">Duyệt</th>
+              <th className="text-right py-2 px-3 text-slate-400 font-medium">Chênh lệch</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r, i) => {
+              const diff = r.kyHD - r.duyet
+              return (
+                <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
+                  <td className="py-2 px-3 text-slate-600 font-medium">
+                    T{String(r.month).padStart(2,'0')}/{r.year}
+                  </td>
+                  <td className="py-2 px-3 text-right font-semibold text-orange-700">{r.kyHD}</td>
+                  <td className="py-2 px-3 text-right font-semibold text-blue-700">{r.duyet}</td>
+                  <td className={`py-2 px-3 text-right text-xs font-medium ${diff > 0 ? 'text-orange-500' : diff < 0 ? 'text-blue-500' : 'text-slate-400'}`}>
+                    {diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : '–'}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
-      <div className="p-5">{children}</div>
+
+      {/* Biểu đồ thanh ngang đơn giản */}
+      <div className="space-y-3 mt-2">
+        {sorted.map((r, i) => (
+          <div key={i}>
+            <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+              <span className="font-medium">T{String(r.month).padStart(2,'0')}/{r.year}</span>
+            </div>
+            {/* Ký HĐ */}
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-14 text-right text-xs text-orange-600 font-medium shrink-0">Ký HĐ</span>
+              <div className="flex-1 bg-orange-100 rounded-full h-5 relative">
+                <div
+                  className="bg-orange-500 h-5 rounded-full transition-all"
+                  style={{ width: `${(r.kyHD / maxVal) * 100}%` }}
+                />
+                <span className="absolute right-2 top-0 h-5 flex items-center text-xs font-bold text-white mix-blend-multiply">
+                  {r.kyHD}
+                </span>
+              </div>
+            </div>
+            {/* Duyệt */}
+            <div className="flex items-center gap-2">
+              <span className="w-14 text-right text-xs text-blue-600 font-medium shrink-0">Duyệt</span>
+              <div className="flex-1 bg-blue-100 rounded-full h-5 relative">
+                <div
+                  className="bg-blue-500 h-5 rounded-full transition-all"
+                  style={{ width: `${(r.duyet / maxVal) * 100}%` }}
+                />
+                <span className="absolute right-2 top-0 h-5 flex items-center text-xs font-bold text-white mix-blend-multiply">
+                  {r.duyet}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
