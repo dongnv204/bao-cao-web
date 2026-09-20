@@ -89,7 +89,7 @@ export default async function DashboardPage() {
       {/* Thông tin nhanh */}
       <div className="mt-8 bg-blue-50 border border-blue-100 rounded-2xl p-5">
         <p className="text-blue-800 text-sm">
-          💡 Dữ liệu được đồng bộ tự động từ Google Sheets mỗi 30 phút.
+          💡 Dữ liệu được đồng bộ tự động từ Google Sheets mỗi 60 phút.
           Nếu cần cập nhật ngay, vào Google Sheets và chạy lại báo cáo.
         </p>
       </div>
