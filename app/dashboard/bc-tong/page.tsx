@@ -570,7 +570,7 @@ function Section({
 function GroupCard({ label, color, grp }: { label: string; color: string; grp: GroupData }) {
   const c     = COLOR[color]
   const topTT = grp.byTrangThai.slice(0, 8)
-  const topKV = grp.byThiTruong.slice(0, 6)
+  const topKV = grp.byThiTruong.slice(0, 10)
 
   return (
     <div className={`rounded-xl border p-4 ${c.card}`}>
@@ -711,11 +711,10 @@ function MonthCompareTable({ items }: { items: MonthCompareItem[] }) {
     return a.month - b.month
   })
 
-  const maxVal    = Math.max(...sorted.flatMap(r => [r.kyHD, r.duyet]), 1)
   const latestIdx = sorted.length - 1
 
   return (
-    <div className="space-y-5">
+    <div>
       {/* ── Pivot table ── */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -787,42 +786,6 @@ function MonthCompareTable({ items }: { items: MonthCompareItem[] }) {
         </table>
       </div>
 
-      {/* ── Biểu đồ thanh ngang ── */}
-      <div className="space-y-3">
-        {sorted.map((r, i) => (
-          <div key={i}>
-            <p className="text-xs font-semibold text-slate-500 mb-1">
-              T{String(r.month).padStart(2,'0')}/{r.year}
-            </p>
-            {/* Ký HĐ */}
-            <div className="flex items-center gap-2 mb-1">
-              <span className="w-14 text-right text-xs text-orange-600 font-medium shrink-0">Ký HĐ</span>
-              <div className="flex-1 bg-orange-100 rounded-full h-5 relative">
-                <div
-                  className="bg-orange-500 h-5 rounded-full transition-all"
-                  style={{ width: `${(r.kyHD / maxVal) * 100}%` }}
-                />
-                <span className="absolute right-2 top-0 h-5 flex items-center text-xs font-bold text-white mix-blend-multiply">
-                  {r.kyHD}
-                </span>
-              </div>
-            </div>
-            {/* Duyệt */}
-            <div className="flex items-center gap-2">
-              <span className="w-14 text-right text-xs text-blue-600 font-medium shrink-0">Duyệt</span>
-              <div className="flex-1 bg-blue-100 rounded-full h-5 relative">
-                <div
-                  className="bg-blue-500 h-5 rounded-full transition-all"
-                  style={{ width: `${(r.duyet / maxVal) * 100}%` }}
-                />
-                <span className="absolute right-2 top-0 h-5 flex items-center text-xs font-bold text-white mix-blend-multiply">
-                  {r.duyet}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
