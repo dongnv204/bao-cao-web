@@ -323,10 +323,11 @@ export default function BCTongPage() {
     })
   }, [data])
 
-  const tq      = data?.tongQuan
-  const cleanTq = data?.cleanTongQuan
-  const hasClean = !!cleanTq
+  const tq       = data?.tongQuan
+  const cleanTq  = data?.cleanTongQuan
   const hasData  = !!tq
+  // Bảng 1 & 2 luôn hiển thị khi có dữ liệu (ngay cả khi GAS chưa trả cleanTongQuan)
+  const hasClean = hasData
 
   // ═══════════════════════════════════════════════════════════════
   // RENDER
@@ -454,7 +455,7 @@ export default function BCTongPage() {
                       {g.label}
                     </p>
                     <p className="text-3xl font-bold text-slate-900">
-                      {cleanTq![g.key as GroupKey]}
+                      {cleanTq?.[g.key as GroupKey] ?? 0}
                     </p>
                     {grp?.thlCount ? (
                       <p className="text-xs text-slate-400 mt-1">
@@ -474,7 +475,7 @@ export default function BCTongPage() {
               <GroupTotalChart
                 data={GROUPS.map(g => ({
                   label: g.label,
-                  val:   cleanTq![g.key as GroupKey],
+                  val:   cleanTq?.[g.key as GroupKey] ?? 0,
                   color: BAR_COLOR[g.color] ?? '#94a3b8',
                 }))}
                 onBarClick={handleCleanBarClick}
@@ -496,11 +497,12 @@ export default function BCTongPage() {
           </Section>
 
           {/* ── Bảng 2: So sánh KÝ HĐ & DUYỆT 4 tháng (Đã Lọc) ──── */}
-          {data?.cleanMonthCompare && data.cleanMonthCompare.length > 0 && (
-            <Section title="Bảng 2 — So sánh Ký HĐ & Duyệt 4 tháng gần nhất (Đã Lọc)" badge="Đã Lọc" badgeColor="green">
-              <MonthCompareTable items={data.cleanMonthCompare} />
-            </Section>
-          )}
+          <Section title="Bảng 2 — So sánh Ký HĐ & Duyệt 4 tháng gần nhất (Đã Lọc)" badge="Đã Lọc" badgeColor="green">
+            {data?.cleanMonthCompare && data.cleanMonthCompare.length > 0
+              ? <MonthCompareTable items={data.cleanMonthCompare} />
+              : <p className="text-xs text-slate-400 py-2">Chưa có dữ liệu so sánh (cần GAS v1.38+)</p>
+            }
+          </Section>
         </>
       )}
 
@@ -599,11 +601,12 @@ export default function BCTongPage() {
           </Section>
 
           {/* ── Bảng 6: So sánh KÝ HĐ & DUYỆT 4 tháng (Gốc) ──────────── */}
-          {data?.monthCompare && data.monthCompare.length > 0 && (
-            <Section title="Bảng 6 — So sánh Ký HĐ & Duyệt 4 tháng gần nhất (Gốc)" badge="Gốc" badgeColor="slate">
-              <MonthCompareTable items={data.monthCompare} />
-            </Section>
-          )}
+          <Section title="Bảng 6 — So sánh Ký HĐ & Duyệt 4 tháng gần nhất (Gốc)" badge="Gốc" badgeColor="slate">
+            {data?.monthCompare && data.monthCompare.length > 0
+              ? <MonthCompareTable items={data.monthCompare} />
+              : <p className="text-xs text-slate-400 py-2">Chưa có dữ liệu so sánh (cần GAS v1.38+)</p>
+            }
+          </Section>
         </>
       )}
 
