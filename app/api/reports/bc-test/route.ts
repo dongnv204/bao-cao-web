@@ -1,49 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySession } from '@/lib/auth'
-import { createClient } from '@supabase/supabase-js'
+import { getMonthBundle, CandidateStats } from '@/lib/supabase-candidates'
 
-// API BC Test — đọc Supabase, trả về cùng format với BC Ngày (bang1/bang2/bang3)
-// Không có bang4 vì Supabase không có cột mã trang
-
-function getSupabase() {
-  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  return createClient(url, key, { auth: { persistSession: false } })
-}
-
-interface CRow {
-  ngay_nhap:  string
-  check_sdt:  string
-  trang_thai: string
-  recruiter:  string
-}
-
-// ── Kiểm tra trạng thái — giống BC Ngày ──────────────────────────────────────
-// hlNet  = CÓ chữ 'hợp lệ' (không tính ô trống)
-function isHl(v: string)    { return (v || '').toLowerCase().includes('hợp lệ') }
-function isTr(v: string)    { return (v || '').toLowerCase().includes('trùng') }
-function isLoai(tt: string) {
-  const s = (tt || '').toLowerCase()
-  return s.includes('loại') || s.includes('từ chối') || s.includes('không đạt')
-}
-
-function calcStats(rows: CRow[]) {
-  const formNhap  = rows.length
-  // Supabase không có bước lọc riêng → uvLoc = formNhap
-  const uvLoc     = formNhap
-  const hlNet     = rows.filter(r => isHl(r.check_sdt)).length
-  const trungNet  = rows.filter(r => isTr(r.check_sdt)).length
-  const chuaCheck = rows.filter(r => !r.check_sdt || r.check_sdt.trim() === '').length
-  // uvNet = không trùng VÀ không bị loại
-  const uvNet     = rows.filter(r => !isTr(r.check_sdt) && !isLoai(r.trang_thai)).length
-  const tyLeHl    = (hlNet + trungNet) > 0 ? hlNet / (hlNet + trungNet) * 100 : null
-  const pctHaoHut = formNhap > 0 ? (formNhap - uvNet) / formNhap * 100 : null
-  return { formNhap, uvLoc, hlNet, trungNet, chuaCheck, uvNet, tyLeHl, pctHaoHut }
-}
+// API BC Test — dùng getMonthBundle từ supabase-candidates (tránh duplicate Supabase query)
+// Trả về cùng format với BC Ngày (bang1/bang2/bang3)
 
 function thuVi(dateStr: string) {
   const d = new Date(dateStr + 'T00:00:00')
   return ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()]
+}
+
+// Ánh xạ CandidateStats → các trường bang1/bang2
+function statsToFields(s: CandidateStats) {
+  const tyLeHl = (s.hopLe + s.trung) > 0 ? s.hopLe / (s.hopLe + s.trung) * 100 : null
+  const pctHaoHut = s.formNhap > 0 ? (s.formNhap - s.uvNet) / s.formNhap * 100 : null
+  return { ...s, tyLeHl, pctHaoHut, hlNet: s.hopLe, trungNet: s.trung }
 }
 
 // ── GET /api/reports/bc-test?day=10&month=9&year=2026 ────────────────────────
@@ -63,37 +34,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase  = getSupabase()
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
-    const lastDay   = new Date(year, month, 0).getDate()
-    const endDate   = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-
-    // Lấy toàn bộ tháng 1 lần duy nhất
-    const { data, error } = await supabase
-      .from('candidates')
-      .select('ngay_nhap, check_sdt, trang_thai, recruiter')
-      .gte('ngay_nhap', startDate)
-      .lte('ngay_nhap', endDate)
-      .order('ngay_nhap')
-
-    if (error) throw new Error(`Supabase error: ${error.message}`)
-    const rows: CRow[] = (data || []) as CRow[]
-
-    // Ngày hiện tại (mặc định = hôm nay trong tháng nếu không truyền day)
+    // 1 query lấy toàn bộ tháng từ hàm dùng chung
     const currentDay = day ?? new Date().getDate()
-    const dateStr    = `${year}-${String(month).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`
+    const { statsThang, statsNgay, dailyList } = await getMonthBundle(month, year, currentDay)
 
-    const rowsNgay  = rows.filter(r => r.ngay_nhap === dateStr)
-    const rowsThang = day ? rows.filter(r => r.ngay_nhap <= dateStr) : rows
-    const sNgay     = calcStats(rowsNgay)
-    const sThang    = calcStats(rowsThang)
+    const sThang = statsToFields(statsThang)
+    const sNgay  = statsNgay ? statsToFields(statsNgay) : statsToFields({ formNhap: 0, hopLe: 0, trung: 0, chuaCheck: 0, uvNet: 0, byRecruiter: [] })
 
-    // ── BẢNG 1 — format giống tuyen-dung API ─────────────────────────────────
+    // ── BẢNG 1 ─────────────────────────────────────────────────────────────────
     const bang1 = {
-      // Tháng (target = 0 vì Supabase không có mục tiêu)
       formNhapThang:    sThang.formNhap,
       targetFormThang:  0,
-      uvLocThang:       sThang.uvLoc,
+      uvLocThang:       sThang.formNhap,
       targetUvLocThang: 0,
       uvNetThang:       sThang.uvNet,
       targetUvNetThang: 0,
@@ -103,10 +55,9 @@ export async function GET(request: NextRequest) {
       targetTrungThang: 0,
       tyLeHlThang:      sThang.tyLeHl,
       chuaCheckThang:   sThang.chuaCheck,
-      // Ngày
       formNhapNgay:    sNgay.formNhap,
       targetFormNgay:  0,
-      uvLocNgay:       sNgay.uvLoc,
+      uvLocNgay:       sNgay.formNhap,
       uvNetNgay:       sNgay.uvNet,
       targetUvNetNgay: 0,
       hlNetNgay:       sNgay.hlNet,
@@ -117,18 +68,11 @@ export async function GET(request: NextRequest) {
       trungThoNgay:    sNgay.trungNet,
     }
 
-    // ── BẢNG 2 — ngày hiện tại + theo recruiter ──────────────────────────────
-    const recruitersMap: Record<string, CRow[]> = {}
-    rowsNgay.forEach(r => {
-      const key = r.recruiter || 'Khác'
-      if (!recruitersMap[key]) recruitersMap[key] = []
-      recruitersMap[key].push(r)
-    })
-
-    const nguon = Object.entries(recruitersMap)
-      .map(([ten, list]) => {
-        const s = calcStats(list)
-        return { ten, uvNet: s.uvNet, hlNet: s.hlNet, trungNet: s.trungNet, tyLeHl: s.tyLeHl, chuaCheck: s.chuaCheck }
+    // ── BẢNG 2 ─────────────────────────────────────────────────────────────────
+    const nguon = (sNgay.byRecruiter || [])
+      .map(r => {
+        const tyLeHl = (r.hopLe + r.trung) > 0 ? r.hopLe / (r.hopLe + r.trung) * 100 : null
+        return { ten: r.recruiter, uvNet: r.uvNet, hlNet: r.hopLe, trungNet: r.trung, tyLeHl, chuaCheck: 0 }
       })
       .sort((a, b) => b.uvNet - a.uvNet)
 
@@ -136,11 +80,11 @@ export async function GET(request: NextRequest) {
       tho: {
         formNhap:       sNgay.formNhap,
         targetFormNgay: 0,
-        uvLoc:          sNgay.uvLoc,
+        uvLoc:          sNgay.formNhap,
         hlTho:          sNgay.hlNet,
-        pctHlTho:       sNgay.uvLoc > 0 ? sNgay.hlNet / sNgay.uvLoc * 100 : null,
+        pctHlTho:       sNgay.formNhap > 0 ? sNgay.hlNet / sNgay.formNhap * 100 : null,
         trungTho:       sNgay.trungNet,
-        pctTrungTho:    sNgay.uvLoc > 0 ? sNgay.trungNet / sNgay.uvLoc * 100 : null,
+        pctTrungTho:    sNgay.formNhap > 0 ? sNgay.trungNet / sNgay.formNhap * 100 : null,
         chuaCheck:      sNgay.chuaCheck,
       },
       net: {
@@ -156,39 +100,32 @@ export async function GET(request: NextRequest) {
     }
 
     // ── BẢNG 3 — mỗi ngày trong tháng ────────────────────────────────────────
-    const byDay: Record<string, CRow[]> = {}
-    rows.forEach(r => {
-      if (!byDay[r.ngay_nhap]) byDay[r.ngay_nhap] = []
-      byDay[r.ngay_nhap].push(r)
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`
+    const bang3Rows = dailyList.map(({ ngay: ngayStr, stats }) => {
+      const sf = statsToFields(stats)
+      const d  = new Date(ngayStr + 'T00:00:00')
+      return {
+        ngay:       `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`,
+        thu:        thuVi(ngayStr),
+        formNhap:   sf.formNhap,
+        uvLoc:      sf.formNhap,
+        pctHaoHut:  sf.pctHaoHut,
+        uvNet:      sf.uvNet,
+        hlNet:      sf.hlNet,
+        trungNet:   sf.trungNet,
+        chuaCheck:  sf.chuaCheck,
+        pctHl:      sf.tyLeHl,
+        isSelected: ngayStr === dateStr,
+      }
     })
 
-    const bang3Rows = Object.entries(byDay)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([ngayStr, dayRows]) => {
-        const s = calcStats(dayRows)
-        const d = new Date(ngayStr + 'T00:00:00')
-        return {
-          ngay:      `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`,
-          thu:       thuVi(ngayStr),
-          formNhap:  s.formNhap,
-          uvLoc:     s.uvLoc,
-          pctHaoHut: s.pctHaoHut,
-          uvNet:     s.uvNet,
-          hlNet:     s.hlNet,
-          trungNet:  s.trungNet,
-          chuaCheck: s.chuaCheck,
-          pctHl:     s.tyLeHl,
-          isSelected: ngayStr === dateStr,
-        }
-      })
-
     // Dòng tổng
-    const sTotal = calcStats(rows)
+    const sTotal = statsToFields(statsThang)
     const totalRow = {
       ngay:      'Tổng',
       thu:       '—',
       formNhap:  sTotal.formNhap,
-      uvLoc:     sTotal.uvLoc,
+      uvLoc:     sTotal.formNhap,
       pctHaoHut: sTotal.pctHaoHut,
       uvNet:     sTotal.uvNet,
       hlNet:     sTotal.hlNet,
