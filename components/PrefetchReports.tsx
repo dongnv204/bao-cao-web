@@ -25,10 +25,10 @@ export default function PrefetchReports() {
     const dd      = String(day).padStart(2, '0')
     const dateStr = `${year}-${mm}-${dd}`
 
-    // ── BC Ngày (hôm nay) — dùng Supabase endpoint ────────────────────
+    // ── BC Ngày (hôm nay) — cùng endpoint với trang tuyen-dung để format khớp cache ──
     const keyNgay = `bc-ngay:${dateStr}`
     if (!cacheGet(keyNgay)) {
-      fetch(`/api/reports/bc-ngay?day=${day}&month=${month}&year=${year}`)
+      fetch(`/api/reports/tuyen-dung?day=${day}&month=${month}&year=${year}`)
         .then(r => r.ok ? r.json() : null)
         .then(d => { if (d) cacheSet(keyNgay, d) })
         .catch(() => {})
