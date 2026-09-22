@@ -24,7 +24,7 @@ export const getTuyenDungReport = unstable_cache(
       day: String(day), month: String(month), year: String(year),
     }),
   ['bc-ngay', 'day', 'month', 'year'],
-  { revalidate: 3600, tags: ['bc-ngay'] }
+  { revalidate: 2700, tags: ['bc-ngay'] }
 )
 
 // ── BC Tháng — cache 60 phút, tag: bc-thang ──────────────────────────
