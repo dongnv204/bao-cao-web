@@ -30,7 +30,7 @@ export default function PrefetchReports() {
     if (!cacheGet(keyNgay)) {
       fetch(`/api/reports/tuyen-dung?day=${day}&month=${month}&year=${year}`)
         .then(r => r.ok ? r.json() : null)
-        .then(d => { if (d) cacheSet(keyNgay, d) })
+        .then(d => { if (d && d._source !== 'supabase') cacheSet(keyNgay, d) })
         .catch(() => {})
     }
 
