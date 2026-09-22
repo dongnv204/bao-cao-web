@@ -65,7 +65,7 @@ interface Bang4Day {
 interface Bang4Page { maTrang: string; tenTrang: string; days: Bang4Day[] }
 interface ReportData {
   day: number; month: number; year: number
-  bang1: Bang1; bang2: Bang2; bang3: Bang3Row[]; bang4: Bang4Page[]
+  bang1: Bang1; bang2: Bang2; bang3: Bang3Row[]; bang4: Bang4Page[]; _source?: string // 'supabase' nếu Apps Script timeout
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -281,7 +281,7 @@ export default function TuyenDungPage() {
     )
     const json = await res.json()
     if (!res.ok) throw new Error(json.error || 'Lỗi không xác định')
-    cacheSet(`bc-ngay:${dateStr}`, json)
+    if (json._source !== 'supabase') cacheSet(`bc-ngay:${dateStr}`, json)
     updateTab(tabId, { data: json })
   }, [updateTab])
 
@@ -481,6 +481,12 @@ export default function TuyenDungPage() {
       {loading && <Spinner />}
       {!loading && error && <ErrorBox msg={error} />}
 
+      {!loading && data?._source === 'supabase' && (
+        <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-400 bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 text-sm no-print">
+          <span>⚠️</span>
+          <div><strong>Dữ liệu tạm thời</strong> — Google Sheets chưa phản hồi. Nhấn <button onClick={refreshData} className="underline font-semibold">Làm mới</button> sau vài phút để lấy dữ liệu đầy đủ.</div>
+        </div>
+      )}
       {!loading && data && b1 && b2 && (
         <>
           {/* ══════════════════════════════════════════════
