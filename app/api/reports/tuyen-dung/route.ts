@@ -3,6 +3,9 @@ import { verifySession } from '@/lib/auth'
 import { getTuyenDungReport } from '@/lib/sheets'
 import { getMonthBundle, CandidateStats } from '@/lib/supabase-candidates'
 
+// Cho phép Vercel chạy function tối đa 30 giây (thay vì default 10s)
+export const maxDuration = 30
+
 // ── Helper: dùng chung với bc-test ───────────────────────────────────────────
 function statsToFields(s: CandidateStats) {
   const tyLeHl   = (s.hopLe + s.trung) > 0 ? s.hopLe / (s.hopLe + s.trung) * 100 : null
@@ -141,10 +144,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Thiếu tham số ngày/tháng/năm' }, { status: 400 })
   }
 
-  // Thử Apps Script với timeout 8 giây.
-  // Nếu cold-start (2+ phút), trả ngay Supabase fallback để user thấy dữ liệu tức thì.
-  // Sau khi Apps Script đã warm, lần sau bấm "Làm mới" sẽ ra đầy đủ.
-  const TIMEOUT_MS = 8000
+  // Thử Apps Script với timeout 25 giây.
+  // Nếu vẫn timeout sau 25s, trả Supabase fallback để user thấy dữ liệu tạm thời.
+  const TIMEOUT_MS = 25000
 
   try {
     const result = await Promise.race([
