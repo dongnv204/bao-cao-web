@@ -2,14 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getTuyenDungReport, getBCThangReport, getBCTongReport } from '@/lib/sheets'
 
 /**
- * API Warmup Cache — gọi tự động bởi cron mỗi 45 phút
- * Bảo vệ bằng CRON_SECRET để tránh lạm dụng
+ * API Warmup Cache — gọi tự động bởi Vercel Cron mỗi 30 phút
+ * Bảo vệ bằng CRON_SECRET (header Authorization hoặc ?secret= query param)
  *
  * GET /api/warmup?secret=<CRON_SECRET>
+ * hoặc với header: Authorization: Bearer <CRON_SECRET>
  */
+export const maxDuration = 30
+
 export async function GET(request: NextRequest) {
-  // Kiểm tra secret key
-  const secret = request.nextUrl.searchParams.get('secret')
+  // Chấp nhận cả Authorization header (Vercel Cron) và ?secret= query param
+  const authHeader = request.headers.get('authorization') || ''
+  const bearerSecret = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const querySecret  = request.nextUrl.searchParams.get('secret')
+  const secret = bearerSecret || querySecret
+
   if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
