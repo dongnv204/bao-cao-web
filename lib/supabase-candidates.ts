@@ -161,9 +161,9 @@ export async function getMonthBundle(
  */
 function computeStats(rows: { check_sdt: string; trang_thai: string; recruiter: string }[]): CandidateStats {
   const isHopLe = (v: string) =>
-    !v || v.trim() === '' || v.toLowerCase().includes('hợp lệ')
+    !!v && v.trim() !== '' && v.toLowerCase().includes('hợp lệ')
   const isTrung = (v: string) =>
-    v.toLowerCase().includes('trùng')
+    !!v && v.toLowerCase().includes('trùng')
   // UV Net = không trùng VÀ trạng thái không bị loại
   const isNet = (row: { check_sdt: string; trang_thai: string }) => {
     if (isTrung(row.check_sdt || '')) return false
