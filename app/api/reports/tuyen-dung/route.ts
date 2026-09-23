@@ -44,6 +44,9 @@ async function buildSupabaseFallback(day: number, month: number, year: number) {
     targetTrungThang: 0,
     tyLeHlThang:      sThang.tyLeHl,
     chuaCheckThang:   sThang.chuaCheck,
+    // [FIX 24/09/2026] Thêm HL Thô / Trùng Thô tháng cho Bảng 1
+    hlThoThang:       sThang.hopLe,
+    trungThoThang:    sThang.trung,
     formNhapNgay:    sNgay.formNhap,
     targetFormNgay:  0,
     uvLocNgay:       sNgay.formNhap,
