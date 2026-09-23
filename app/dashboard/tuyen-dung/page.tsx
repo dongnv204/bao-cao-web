@@ -526,8 +526,8 @@ export default function TuyenDungPage() {
                     <KpiProgress label="HL Net"      val={b1.hlNetThang}                        target={b1.targetHlNetThang}                         bg="bg-[#f9a825]" />
                     <KpiProgress label="Trùng Net"   val={b1.trungNetThang}                     target={b1.targetTrungThang}                         bg="bg-[#4a148c]" />
                     <div className="grid grid-cols-2 gap-2">
-                      <KpiSingle label="HL Thô"    val={b1.hlThoNgay ?? b2.tho.hlTho}    bg="bg-blue-700" />
-                      <KpiSingle label="Trùng Thô" val={b1.trungThoNgay ?? b2.tho.trungTho} bg="bg-blue-900" />
+                      <KpiSingle label="HL Thô"    val={b1.hlThoThang ?? b2.tho.hlTho}    bg="bg-blue-700" />
+                      <KpiSingle label="Trùng Thô" val={b1.trungThoThang ?? b2.tho.trungTho} bg="bg-blue-900" />
                     </div>
                   </div>
                 </div>
