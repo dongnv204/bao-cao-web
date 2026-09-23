@@ -521,10 +521,10 @@ export default function TuyenDungPage() {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-3">
                     <KpiProgress label="Form Nhập"   val={b1.formNhapNgay ?? b2.tho.formNhap} target={b1.targetFormNgay ?? b2.tho.targetFormNgay} bg="bg-[#e65100]" />
-                    <KpiProgress label="UV Lọc"      val={b1.uvLocNgay ?? b2.tho.uvLoc}       target={b1.targetFormNgay ?? b2.tho.targetFormNgay} bg="bg-[#212121]" />
-                    <KpiProgress label="UV Net"      val={b1.uvNetNgay ?? b2.net.uvNet}        target={b1.targetUvNetNgay ?? b2.net.targetUvNetNgay} bg="bg-[#00695c]" />
-                    <KpiProgress label="HL Net"      val={b1.hlNetNgay ?? b2.net.hlNet}        target={b1.targetHlNetNgay ?? b2.net.targetHlNetNgay}  bg="bg-[#f9a825]" />
-                    <KpiProgress label="Trùng Net"   val={b1.trungNetNgay ?? b2.net.trungNet}  target={b1.targetTrungNgay ?? b2.net.targetTrungNgay}  bg="bg-[#4a148c]" />
+                    <KpiProgress label="UV Lọc"      val={b1.uvLocThang ?? b1.formNhapThang}    target={b1.targetUvLocThang ?? b1.targetFormThang}   bg="bg-[#212121]" />
+                    <KpiProgress label="UV Net"      val={b1.uvNetThang}                        target={b1.targetUvNetThang}                         bg="bg-[#00695c]" />
+                    <KpiProgress label="HL Net"      val={b1.hlNetThang}                        target={b1.targetHlNetThang}                         bg="bg-[#f9a825]" />
+                    <KpiProgress label="Trùng Net"   val={b1.trungNetThang}                     target={b1.targetTrungThang}                         bg="bg-[#4a148c]" />
                     <div className="grid grid-cols-2 gap-2">
                       <KpiSingle label="HL Thô"    val={b1.hlThoNgay ?? b2.tho.hlTho}    bg="bg-blue-700" />
                       <KpiSingle label="Trùng Thô" val={b1.trungThoNgay ?? b2.tho.trungTho} bg="bg-blue-900" />
