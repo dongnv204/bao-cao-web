@@ -1,6 +1,6 @@
-// ── localStorage cache với TTL 30 phút ──────────────────────────────
+// ── localStorage cache với TTL 60 phút ──────────────────────────────
 
-const TTL_MS = 30 * 60 * 1000 // 30 phút
+const TTL_MS = 60 * 60 * 1000 // 60 phút
 
 interface Entry<T> { data: T; savedAt: number }
 
