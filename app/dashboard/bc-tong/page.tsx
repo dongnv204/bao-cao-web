@@ -185,7 +185,7 @@ export default function BCTongPage() {
       const fresh = cacheGet<BCTongData>(`bc-tong:${m}:${y}`)
       if (fresh) {
         updateTab(tabId, { data: fresh, loading: false, error: '' })
-        toast('info', 'Từ cache', `Dữ liệu T${m}/${y} · còn hạn 30 phút`)
+        toast('info', 'Từ cache', `Dữ liệu T${m}/${y} · còn hạn 60 phút`)
         return
       }
       const stale = cacheGetStale<BCTongData>(`bc-tong:${m}:${y}`)
