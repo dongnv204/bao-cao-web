@@ -3,12 +3,12 @@ import { verifySession } from '@/lib/auth'
 import { getTuyenDungReport } from '@/lib/sheets'
 import { getMonthBundle, CandidateStats } from '@/lib/supabase-candidates'
 
-// Cho phép Vercel chạy function tối đa 60 giây (max Hobby plan)
+// Cho phép Vercel chạy function tối đa 60 giây
 export const maxDuration = 60
 
-// ── Helper: dùng chung với bc-test ───────────────────────────────────────────
+// ── Helper ───────────────────────────────────────────────────────────────────
 function statsToFields(s: CandidateStats) {
-  const tyLeHl   = (s.hopLe + s.trung) > 0 ? s.hopLe / (s.hopLe + s.trung) * 100 : null
+  const tyLeHl    = (s.hopLe + s.trung) > 0 ? s.hopLe / (s.hopLe + s.trung) * 100 : null
   const pctHaoHut = s.formNhap > 0 ? (s.formNhap - s.uvNet) / s.formNhap * 100 : null
   return { ...s, tyLeHl, pctHaoHut, hlNet: s.hopLe, trungNet: s.trung }
 }
@@ -19,8 +19,9 @@ function thuVi(dateStr: string) {
 }
 
 /**
- * Tạo data fallback từ Supabase (nhanh < 1s) khi Apps Script chưa phản hồi.
- * Format giống y hệt tuyen-dung nhưng bang4 = [] và các trường PV/HĐ/Duyệt = 0.
+ * Tạo data từ Supabase (nhanh ~50ms với cache) khi Apps Script chưa phản hồi.
+ * [FIX 24/09/2026] getMonthBundle dùng unstable_cache — luôn ~50ms
+ * [FIX 24/09/2026] bang2.phanLoai populate từ phanLoaiBreakdown
  */
 async function buildSupabaseFallback(day: number, month: number, year: number) {
   const { statsThang, statsNgay, dailyList } = await getMonthBundle(month, year, day)
@@ -28,9 +29,9 @@ async function buildSupabaseFallback(day: number, month: number, year: number) {
   const sThang = statsToFields(statsThang)
   const sNgay  = statsNgay
     ? statsToFields(statsNgay)
-    : statsToFields({ formNhap: 0, hopLe: 0, trung: 0, chuaCheck: 0, uvNet: 0, byRecruiter: [] })
+    : statsToFields({ formNhap: 0, hopLe: 0, trung: 0, chuaCheck: 0, uvNet: 0, phanLoaiBreakdown: [], byRecruiter: [] })
 
-  // bang1 — thiếu dauPV/kyHD/duyet (chỉ có trong Google Sheets), để undefined
+  // bang1
   const bang1 = {
     formNhapThang:    sThang.formNhap,
     targetFormThang:  0,
@@ -44,7 +45,6 @@ async function buildSupabaseFallback(day: number, month: number, year: number) {
     targetTrungThang: 0,
     tyLeHlThang:      sThang.tyLeHl,
     chuaCheckThang:   sThang.chuaCheck,
-    // [FIX 24/09/2026] Thêm HL Thô / Trùng Thô tháng cho Bảng 1
     hlThoThang:       sThang.hopLe,
     trungThoThang:    sThang.trung,
     formNhapNgay:    sNgay.formNhap,
@@ -60,13 +60,18 @@ async function buildSupabaseFallback(day: number, month: number, year: number) {
     trungThoNgay:    sNgay.trungNet,
   }
 
-  // bang2
+  // bang2 — nguon = by recruiter
   const nguon = (sNgay.byRecruiter || [])
     .map(r => {
       const tyLeHl = (r.hopLe + r.trung) > 0 ? r.hopLe / (r.hopLe + r.trung) * 100 : null
       return { ten: r.recruiter, uvNet: r.uvNet, hlNet: r.hopLe, trungNet: r.trung, tyLeHl, chuaCheck: 0 }
     })
     .sort((a, b) => b.uvNet - a.uvNet)
+
+  // [FIX 24/09/2026] Populate phanLoai từ phanLoaiBreakdown — trước đây hardcode []
+  const phanLoai = (sNgay.phanLoaiBreakdown || [])
+    .filter(p => p.label !== '(Ch\u01b0a ph\u00e2n lo\u1ea1i)' && p.count > 0)
+    .map(p => ({ ten: p.label, soLuong: p.count }))
 
   const bang2 = {
     tho: {
@@ -89,16 +94,16 @@ async function buildSupabaseFallback(day: number, month: number, year: number) {
       tyLeHl:          sNgay.tyLeHl,
     },
     nguon,
-    phanLoai: [],
+    phanLoai,   // [FIX] Thực tế thay vì []
   }
 
-  // bang3 — từng ngày trong tháng
-  const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+  // bang3 — từng ngày
+  const dateStr   = year + '-' + String(month).padStart(2,'0') + '-' + String(day).padStart(2,'0')
   const bang3Rows = dailyList.map(({ ngay: ngayStr, stats }) => {
     const sf = statsToFields(stats)
     const d  = new Date(ngayStr + 'T00:00:00')
     return {
-      ngay:       `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`,
+      ngay:       String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0'),
       thu:        thuVi(ngayStr),
       formNhap:   sf.formNhap,
       uvLoc:      sf.formNhap,
@@ -112,9 +117,9 @@ async function buildSupabaseFallback(day: number, month: number, year: number) {
     }
   })
 
-  const sTotal = statsToFields(statsThang)
+  const sTotal   = statsToFields(statsThang)
   const totalRow = {
-    ngay: 'Tổng', thu: '—',
+    ngay: 'T\u1ed5ng', thu: '\u2014',
     formNhap: sTotal.formNhap, uvLoc: sTotal.formNhap,
     pctHaoHut: sTotal.pctHaoHut, uvNet: sTotal.uvNet,
     hlNet: sTotal.hlNet, trungNet: sTotal.trungNet,
@@ -126,8 +131,8 @@ async function buildSupabaseFallback(day: number, month: number, year: number) {
     day, month, year,
     bang1, bang2,
     bang3: [...bang3Rows, totalRow],
-    bang4: [],        // Google Sheets only — không có trong Supabase
-    _source: 'supabase',  // Flag để client biết đây là dữ liệu tạm
+    bang4: [],
+    _source: 'supabase',
   }
 }
 
@@ -135,7 +140,7 @@ async function buildSupabaseFallback(day: number, month: number, year: number) {
 export async function GET(request: NextRequest) {
   const user = await verifySession()
   if (!user) {
-    return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 })
+    return NextResponse.json({ error: 'Ch\u01b0a \u0111\u0103ng nh\u1eadp' }, { status: 401 })
   }
 
   const { searchParams } = new URL(request.url)
@@ -144,12 +149,12 @@ export async function GET(request: NextRequest) {
   const year  = Number(searchParams.get('year'))
 
   if (!day || !month || !year) {
-    return NextResponse.json({ error: 'Thiếu tham số ngày/tháng/năm' }, { status: 400 })
+    return NextResponse.json({ error: 'Thi\u1ebfu tham s\u1ed1 ng\u00e0y/th\u00e1ng/n\u0103m' }, { status: 400 })
   }
 
-  // Thử Apps Script với timeout 25 giây.
-  // Nếu vẫn timeout sau 25s, trả Supabase fallback để user thấy dữ liệu tạm thời.
-  const TIMEOUT_MS = 55000
+  // [FIX 24/09/2026] Gi\u1ea3m timeout t\u1eeb 55s -> 10s.
+  // Supabase fallback gi\u1edd d\u00f9ng cache (< 50ms), kh\u00f4ng c\u1ea7n ch\u1edd Apps Script l\u00e2u.
+  const TIMEOUT_MS = 10_000
 
   try {
     const result = await Promise.race([
@@ -159,36 +164,34 @@ export async function GET(request: NextRequest) {
       ),
     ])
 
-    // Apps Script trả lỗi hoặc OK = false
     if (!result || result.ok === false) {
-      console.warn('Apps Script trả về lỗi, dùng Supabase fallback')
       const fallback = await buildSupabaseFallback(day, month, year)
       return NextResponse.json(fallback)
     }
 
-    // Thành công — trả đầy đủ dữ liệu Google Sheets
     return NextResponse.json(result.data)
 
   } catch (err: any) {
     if (err?.message === 'apps_script_timeout') {
-      // Apps Script chưa warm — dùng Supabase để trả ngay
-      console.warn(`Apps Script timeout >${TIMEOUT_MS}ms, dùng Supabase fallback`)
       try {
         const fallback = await buildSupabaseFallback(day, month, year)
         return NextResponse.json(fallback)
       } catch (sbErr: any) {
-        console.error('Supabase fallback cũng lỗi:', sbErr)
-        return NextResponse.json({ error: 'Không lấy được dữ liệu từ cả Apps Script lẫn Supabase' }, { status: 503 })
+        return NextResponse.json(
+          { error: 'Kh\u00f4ng l\u1ea5y \u0111\u01b0\u1ee3c d\u1eef li\u1ec7u t\u1eeb c\u1ea3 Apps Script l\u1eabn Supabase' },
+          { status: 503 }
+        )
       }
     }
 
-    // Lỗi khác (mạng, parse, v.v.)
-    console.error('Lỗi gọi Apps Script:', err)
     try {
       const fallback = await buildSupabaseFallback(day, month, year)
       return NextResponse.json(fallback)
     } catch {
-      return NextResponse.json({ error: err?.message || 'Không kết nối được Google Sheets' }, { status: 500 })
+      return NextResponse.json(
+        { error: err?.message || 'L\u1ed7i k\u1ebft n\u1ed1i' },
+        { status: 500 }
+      )
     }
   }
 }
