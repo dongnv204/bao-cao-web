@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         { status: 502 }
       )
     }
-    return NextResponse.json(result)
+    return NextResponse.json(result.data)
   } catch (err: any) {
     console.error('Lỗi gọi Apps Script BC Tổng:', err)
     return NextResponse.json(
