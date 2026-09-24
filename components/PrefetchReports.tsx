@@ -6,7 +6,7 @@
  * Hoạt động:
  *  1. Render null (vô hình với user)
  *  2. useEffect chạy 1 lần sau mount: gọi 3 API song song
- *  3. Kết quả được lưu vào localStorage cache (TTL 30 phút)
+ *  3. Kết quả được lưu vào localStorage cache (TTL 60 phút)
  *  4. Khi user mở từng trang, cacheGet() hit ngay → hiện dữ liệu tức thì
  */
 
