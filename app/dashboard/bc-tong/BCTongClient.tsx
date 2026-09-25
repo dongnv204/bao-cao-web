@@ -437,7 +437,7 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
           </p>
 
           {/* ── Bảng 1: Tổng quan N 4 nhóm (Đã Lọc) ────────────────── */}
-          <Section title={`Bảng 1 — Tổng quan chuyển đổi T${String(month).padStart(2,'0')}/${year} (Đã Lọc)`} badge="Đã Lọc" badgeColor="gr2een">
+          <Section title={`Bảng 1 — Tổng quan chuyển đổi T${String(month).padStart(2,'0')}/${year} (Đã Lọc)`} badge="Đã Lọc" badgeColor="green">
             {!cleanTq && (
               <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
                 ⚠️ GAS chưa trả dữ liệu đã lọc — cần cập nhật hàm <code>doGet</code> trong Apps Script để trả <code>cleanTongQuan</code>
