@@ -213,7 +213,7 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
         updateTab(tabId, { data: stale, loading: false, refreshing: true, error: '' })
         try {
           const d = await _fetchFromServer(m, y, tabId)
-          toast('success', `LÃ m láº¡i xong T${m}/${y}`, `Cáº­p nháº­t: ${d.updatedAt ?? 'tá»©a xong'}`)
+          toast('success', `LÃ m má»›i xong T${m}/${y}`, `Cáº­p nháº­t: ${d.updatedAt ?? 'tá»«a xong'}`)
         } catch { /* silent â€” stale data váº«n hiá»ƒn thá»‹ */ }
         finally { updateTab(tabId, { refreshing: false }) }
         return
@@ -364,7 +364,7 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
           <p className="text-xs text-slate-400 mt-0.5">
             Thá»‘ng kÃª UV Ä‘áº­u PV / Ä‘Ã o táº¡o / kÃ½ HÄ / duyá»‡t
             {data && !data.empty && ` Â· Cáº­p nháº­t: ${data.updatedAt}`}
-            {refreshing && <span className="ml-2 text-amber-500">â†» Äang lÃ m láº¡i...</span>}
+            {refreshing && <span className="ml-2 text-amber-500">â†» Äang lÃ m má»›i...</span>}
           </p>
         </div>
 
@@ -436,8 +436,8 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
             ÄÃ£ loáº¡i UV trÃ¹ng SÄT xuyÃªn nhÃ³m Â· ÄÃ£ loáº¡i tráº¡ng thÃ¡i "TX Nghá»‰ Viá»‡c" vÃ  "Nháº­p láº¡i"
           </p>
 
-          {/* â”€â”€ Báº£ng 1: Tá»•ng quan s4-nÃ³m (ÄÃ£ Lá»c) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-          <Section title={`Báº£ng 1 â€” Tá»•ng quan chuyá»ƒn Ä‘á»•i T${String(month).padStart(2,'0')}/${year} (ÄÃ£ Lá»c)`} badge="ÄÃ£ Lá»c" badgeColor="green">
+          {/* â”€â”€ Báº£ng 1: Tá»•ng quan N 4 nhÃ³m (ÄÃ£ Lá»c) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          <Section title={`Báº£ng 1 â€” Tá»•ng quan chuyá»ƒn Ä‘á»•i T${String(month).padStart(2,'0')}/${year} (ÄÃ£ Lá»c)`} badge="ÄÃ£ Lá»c" badgeColor="gr2een">
             {!cleanTq && (
               <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
                 âš ï¸ GAS chÆ°a tráº£ dá»¯ liá»‡u Ä‘Ã£ lá»c â€” cáº§n cáº­p nháº­t hÃ m <code>doGet</code> trong Apps Script Ä‘á»ƒ tráº£ <code>cleanTongQuan</code>
@@ -516,7 +516,7 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
                     ) : (
                       <p className="text-xs text-slate-400 mb-2">UV trong T{month}/{year}</p>
                     )}
-                    {/* Bang thÃ¡ng nháº­p theo nhÃ³m */}
+                    {/* Báº£ng thÃ¡ng nháº­p theo nhÃ³m */}
                     <MonthBreakdown rows={grp?.byMonthNhap ?? []} />
                   </div>
                 )
@@ -525,9 +525,9 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
           </Section>
 
           {/* â”€â”€ Báº£ng 4: Chi tiáº¿t tá»«ng nhÃ³m (Gá»‘c) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-          <Section title="Báº£ng 4 â€‹ Chi tiáº¿t theo nhÃ³m (Gá»‘c)" badge="Gá»‘c" badgeColor="slate">
+          <Section title="Báº£ng 4 â€” Chi tiáº¿t theo nhÃ³m (Gá»‘c)" badge="Gá»‘c" badgeColor="slate">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {GROUPS9.map(g => {
+              {GROUPS.map(g => {
                 const grp = data![g.key as GroupKey] as GroupData | undefined
                 if (!grp || grp.total === 0) return null
                 return <GroupCard key={g.key} label={g.label} color={g.color} grp={grp} />
@@ -536,12 +536,12 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
           </Section>
 
           {/* â”€â”€ Báº£ng 5: ThÃ¡ng nháº­p UV (Gá»‘c) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-          <Section title="Báº£ng 5 â€‹ ThÃ¡ng nháº­p UV theo nhÃ³m phá»…u (Gá»‘c" badge="Gá»‘c" badgeColor="slate">
+          <Section title="Báº£ng 5 â€” ThÃ¡ng nháº­p UV theo nhÃ³m phá»…u (Gá»‘c)" badge="Gá»‘c" badgeColor="slate">
             <MonthTable data={data!} />
           </Section>
 
-          {/* â”€â”€ Báº£ng 6: So sÃ¡nh KÃ½ HÄ & DUYá»†T 4 thÃ¡ng (Gá»‘c) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-          <Section title="Báº£ng 6 â€‹ So sÃ¡nh KÃ½ HÄ & Duyá»‡t 4 thÃ¡ng gáº§n nháº¥t (Gá»‘c)" badge="Gá»‘c" badgeColor="slate">
+          {/* â”€â”€ Báº£ng 6: So sÃ¡nh KÃ HÄ & DUYá»†T 4 thÃ¡ng (Gá»‘c) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          <Section title="Báº£ng 6 â€” So sÃ¡nh KÃ½ HÄ & Duyá»‡t 4 thÃ¡ng gáº§n nháº¥t (Gá»‘c)" badge="Gá»‘c" badgeColor="slate">
             {data?.monthCompare && data.monthCompare.length > 0
               ? <MonthCompareTable items={data.monthCompare} />
               : <p className="text-xs text-slate-400 py-2">ChÆ°a cÃ³ dá»¯ liá»‡u so sÃ¡nh (cáº§n GAS v1.38+)</p>
@@ -550,7 +550,7 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
         </>
       )}
 
-      {/* Compare Panel  */}
+      {/* â”€â”€ Compare Panel â”€â”€ */}
       {compareOpen && (
         <ComparePanel
           tabs={tabs.map(t => ({ id: t.id, label: `T${t.month}/${t.year}`, hasData: !!t.data }))}
@@ -616,93 +616,206 @@ function GroupCard({ label, color, grp }: { label: string; color: string; grp: G
         </div>
       </div>
 
-      {topTT.lengthˆ	‰ˆ
-ˆ]ˆÛ\ÜÓ˜[YOH›X‹LÈ‚ˆÛ\ÜÓ˜[YOH^^È^\Û]KMLX‹LKH•¸n¨[™È0èZOÜ‚ˆ]ˆÛ\ÜÓ˜[YOHœÜXÙK^KLKH‚ˆİÜ›X\
+      {topTT.length > 0 && (
+        <div className="mb-3">
+          <p className="text-xs text-slate-500 mb-1.5">Tráº¡ng thÃ¡i</p>
+          <div className="space-y-1.5">
+            {topTT.map((r, i) => {
+              const pct = Math.round((r.val / grp.total) * 100)
+              return (
+                <div key={i}>
+                  <div className="flex justify-between text-xs mb-0.5">
+                    <span className="text-slate-600 truncate max-w-[70%]">{r.label}</span>
+                    <span className="font-medium text-slate-700">{r.val}</span>
+                  </div>
+                  <div className="bg-white/60 rounded-full h-1.5">
+                    <div className={`${c.bar} h-1.5 rounded-full`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
-‹JHOˆÂˆÛÛœİİHX]œ›İ[™
+      {topKV.length > 0 && (
+        <div>
+          <p className="text-xs text-slate-500 mb-1.5">Khu vá»±c</p>
+          <div className="flex flex-wrap gap-1.5">
+            {topKV.map((r, i) => (
+              <span key={i} className="text-xs bg-white/70 rounded-lg px-2 py-1 text-slate-700">
+                {r.label} <span className={`font-bold ${c.badge}`}>{r.val}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
-‹˜[ÈÜœİ[
-H
-ˆL
-Bˆ™]\›ˆ
-ˆ]ˆÙ^O^Ú_O‚ˆ]ˆÛ\ÜÓ˜[YOH™›^\İYKX™]ÙY[ˆ^^ÈX‹LH‚ˆÜ[ˆÛ\ÜÓ˜[YOH^\Û]KMŒ[˜Ø]HX^]ËVÍÌ	WHÜ‹›X™[OÜÜ[‚ˆÜ[ˆÛ\ÜÓ˜[YOH™›Û[YY][H^\Û]KMÌÜ‹˜[OÜÜ[‚ˆÙ]‚ˆ]ˆÛ\ÜÓ˜[YOH˜™Ë]Ú]KÍŒ›İ[™YY[LKH‚ˆ]ˆÛ\ÜÓ˜[YO^Ø	ØË˜˜\ŸHLKH›İ[™YY[Hİ[O^ŞÈÚYˆ	ÜİIX_HÏ‚ˆÙ]‚ˆÙ]‚ˆ
-BˆJ_BˆÙ]‚ˆÙ]‚ˆ
-_B‚ˆİÜÕ‹›[™İˆ	‰ˆ
-ˆ]‚ˆÛ\ÜÓ˜[YOH^^È^\Û]KMLX‹LKH’ÚH¸nìXÏÜ‚ˆ]ˆÛ\ÜÓ˜[YOH™›^›^]Ü˜\Ø\LKH‚ˆİÜÕ‹›X\
+/** Mini-báº£ng thÃ¡ng nháº­p UV cho 1 nhÃ³m (hiá»ƒn thá»‹ trong tá»«ng tile) */
+function MonthBreakdown({ rows }: { rows: MonthRow[] }) {
+  if (rows.length === 0) return null
+  const total = rows.reduce((s, r) => s + r.val, 0)
+  return (
+    <table className="w-full text-xs mt-2 border-t border-slate-200/60 pt-1">
+      <thead>
+        <tr>
+          <th className="text-left font-medium text-slate-400 py-0.5">ThÃ¡ng nháº­p</th>
+          <th className="text-right font-medium text-slate-400 py-0.5">UV</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(r => (
+          <tr key={r.month} className="border-t border-slate-100/80">
+            <td className="py-0.5 text-slate-600">T{String(r.month).padStart(2,'0')}</td>
+            <td className="py-0.5 text-right font-semibold text-slate-800">{r.val}</td>
+          </tr>
+        ))}
+        <tr className="border-t border-slate-200">
+          <td className="pt-1 font-semibold text-slate-500">Tá»”NG</td>
+          <td className="pt-1 text-right font-bold text-slate-900">{total}</td>
+        </tr>
+      </tbody>
+    </table>
+  )
+}
 
-‹JHOˆ
-ˆÜ[ˆÙ^O^Ú_HÛ\ÜÓ˜[YOH^^È™Ë]Ú]KÍÌ›İ[™Y[ÈLˆKLH^\Û]KMÌ‚ˆÜ‹›X™[HÜ[ˆÛ\ÜÓ˜[YO^Ø›ÛX›Û	ØË˜˜YÙ_XOÜ‹˜[OÜÜ[‚ˆÜÜ[‚ˆ
-J_BˆÙ]‚ˆÙ]‚ˆ
-_BˆÙ]‚ˆ
-BŸB‚‹ÊŠˆZ[šKX¸n¨Û™È0è[™Èš8n«\UˆÚÈHš0ìÛH
-xnàÛˆ8nâÈ›Û™È8nêÛ™È[JH
-‹Â™[˜İ[Ûˆ[Ûœ™XZÙİÛŠÈ›İÜÈNˆÈ›İÜÎˆ[Û›İÖ×HJHÂˆYˆ
-›İÜË›[™İOOH
-H™]\›ˆ[ˆÛÛœİİ[H›İÜËœ™YXÙJ
-ËŠHOˆÈ
-È‹˜[
-Bˆ™]\›ˆ
-ˆX›HÛ\ÜÓ˜[YOHËY[^^È]Lˆ›Ü™\‹]›Ü™\‹\Û]KLŒÍŒLH‚ˆXY‚ˆ‚ˆÛ\ÜÓ˜[YOH^[Y›Û[YY][H^\Û]KMKLH•0è[™Èš8n«\İ‚ˆÛ\ÜÓ˜[YOH^\šYÚ›Û[YY][H^\Û]KMKLH•Uİ‚ˆİ‚ˆİXY‚ˆ›ÙO‚ˆÜ›İÜË›X\
-ˆOˆ
-ˆˆÙ^O^Ü‹›[ÛHÛ\ÜÓ˜[YOH˜›Ü™\‹]›Ü™\‹\Û]KLLÎ‚ˆÛ\ÜÓ˜[YOHœKLH^\Û]KMŒ•Ôİš[™Ê‹›[Û
-KœYİ\
-‹	Ì	Ê_Oİ‚ˆÛ\ÜÓ˜[YOHœKLH^\šYÚ›Û\Ù[ZX›Û^\Û]KNÜ‹˜[Oİ‚ˆİ‚ˆ
-J_BˆˆÛ\ÜÓ˜[YOH˜›Ü™\‹]›Ü™\‹\Û]KLŒ‚ˆÛ\ÜÓ˜[YOHœLH›Û\Ù[ZX›Û^\Û]KML•8nå‘Ïİ‚ˆÛ\ÜÓ˜[YOHœLH^\šYÚ›ÛX›Û^\Û]KNLİİ[Oİ‚ˆİ‚ˆİ›ÙO‚ˆİX›O‚ˆ
-BŸB‚‹ÊŠˆ¸n¨Û™È0è[™Èš8n«\UˆÜ›ÜÜÈš0ìÛH
-‹Â™[˜İ[Ûˆ[ÛX›JÈ]HNˆÈ]NˆÕÛ™Ñ]HJHÂˆÛÛœİ[ÛÙ]H™]ÈÙ][X™\Š
-BˆÔ“ÕTË™›Ü‘XXÚ
-ÈOˆÂˆÛÛœİÜœH]VÙËšÙ^H\ÈÜ›İ\Ù^WH\ÈÜ›İ\]H[™Yš[™YˆÜœË˜S[Ûš\™›Ü‘XXÚ
-ˆOˆ[ÛÙ]˜Y
-‹›[Û
-JBˆJBˆÛÛœİ[ÛÈH\œ˜^K™œ›ÛJ[ÛÙ]
-KœÛÜ
+/** Báº£ng thÃ¡ng nháº­p UV cross nhÃ³m */
+function MonthTable({ data }: { data: BCTongData }) {
+  const monthSet = new Set<number>()
+  GROUPS.forEach(g => {
+    const grp = data[g.key as GroupKey] as GroupData | undefined
+    grp?.byMonthNhap.forEach(r => monthSet.add(r.month))
+  })
+  const months = Array.from(monthSet).sort((a, b) => a - b)
+  if (months.length === 0) return <p className="text-sm text-slate-400">KhÃ´ng cÃ³ dá»¯ liá»‡u</p>
 
-KŠHOˆHHŠBˆYˆ
-[ÛË›[™İOOH
-H™]\›ˆÛ\ÜÓ˜[YOH^\ÛH^\Û]KM’Ú0í™ÈğìÈ8nëÈxnáİOÜ‚‚ˆ[˜İ[ÛˆÙ]˜[
-ÜœˆÜ›İ\]H[™Yš[™YNˆ[X™\ŠHÂˆ™]\›ˆÜœË˜S[Ûš\™š[™
-ˆOˆ‹›[ÛOOHJOË˜[ÏÈˆB‚ˆ™]\›ˆ
-ˆ]ˆÛ\ÜÓ˜[YOH›İ™\™›İË^X]]È‚ˆX›HÛ\ÜÓ˜[YOHËY[^\ÛH‚ˆXY‚ˆˆÛ\ÜÓ˜[YOH˜›Ü™\‹Xˆ›Ü™\‹\Û]KLL‚ˆÛ\ÜÓ˜[YOH^[YKLˆLÈ^\Û]KML›Û[YY][H•0è[™Èš8n«\İ‚ˆÑÔ“ÕTË›X\
-ÈOˆ
-ˆÙ^O^ÙËšÙ^_HÛ\ÜÓ˜[YO^Ø^\šYÚKLˆLÈ›Û[YY][H	ĞÓÓÔ–ÙË˜ÛÛÜ—K˜˜YÙ_XO‚ˆÙË›X™[Bˆİ‚ˆ
-J_Bˆİ‚ˆİXY‚ˆ›ÙO‚ˆÛ[ÛË›X\
-HOˆ
-ˆˆÙ^O^Û_HÛ\ÜÓ˜[YOH˜›Ü™\‹Xˆ›Ü™\‹\Û]KMLİ™\˜™Ë\Û]KML‚ˆÛ\ÜÓ˜[YOHœKLˆLÈ^\Û]KMŒ•0è[™ÈÛ_Oİ‚ˆÑÔ“ÕTË›X\
-ÈOˆÂˆÛÛœİˆHÙ]˜[
-]VÙËšÙ^H\ÈÜ›İ\Ù^WH\ÈÜ›İ\]H[™Yš[™YJBˆ™]\›ˆ
-ˆÙ^O^ÙËšÙ^_HÛ\ÜÓ˜[YOHœKLˆLÈ^\šYÚ›Û\Ù[ZX›Û^\Û]KN‚ˆİˆˆÈˆˆÜ[ˆÛ\ÜÓ˜[YOH^\Û]KLÌ¸ %ÜÜ[ŸBˆİ‚ˆ
-BˆJ_Bˆİ‚ˆ
-J_Bˆİ›ÙO‚ˆİX›O‚ˆÙ]‚ˆ
-BŸB‚‹ÊŠ‚ˆ
-ˆ¸n¨Û™ÈÛÈğè[šğçH1$	ˆVxná•[È0è[™Èøn©Ûˆš8n©]8 %^[İ]]›İ
-0è[™È0èHønæ]
-Bˆ
-ˆH0è™ÎˆğïH1$È^xnáİ
-¸nãÈÚ0ê›š8náØÚ
-Bˆ
-ˆHønæ]ˆ8nêÛ™È0è[™Ëøn«Ü.¯Ü1 Û™È8n©Û‚ˆ
-ˆH0è[™Èøn©Ûˆš8n©]ˆXY\ˆ¸nà[ˆ[š
-ÌØ™ŠHÚ8nëÈ¸n«Û™Ë0í8nëÈxnáİH¸nà[ˆ[šš8n¨]ˆ
-‹Â™[˜İ[Ûˆ[ÛÛÛ\\™UX›JÈ][\ÈNˆÈ][\Îˆ[ÛÛÛ\\™R][V×HJHÂˆÛÛœİÛÜYHË‹‹š][\×KœÛÜ
+  function getVal(grp: GroupData | undefined, m: number) {
+    return grp?.byMonthNhap.find(r => r.month === m)?.val ?? 0
+  }
 
-KŠHOˆÂˆYˆ
-KYX\ˆOOH‹YX\ŠH™]\›ˆKYX\ˆH‹YX\‚ˆ™]\›ˆK›[ÛH‹›[ÛˆJB‚ˆÛÛœİ]\İYHÛÜY›[™İHB‚ˆ™]\›ˆ
-ˆ]‚ˆËÊˆ8¥ 8¥ ]›İX›H8¥ 8¥ 
-‹ßBˆ]ˆÛ\ÜÓ˜[YOH›İ™\™›İË^X]]È‚ˆX›HÛ\ÜÓ˜[YOHËY[^\ÛH›Ü™\‹XÛÛ\ÙHˆİ[O^ŞÈ›Û˜\šX[[Y\šXÎˆ	İX[\‹[[\ÉÈ_O‚ˆXY‚ˆ‚ˆÛ\ÜÓ˜[YOH^[YKL‹HM^^È›Û\Ù[ZX›Û^\Û]KM\\˜Ø\ÙH˜XÚÚ[™Ë]ÚYH™Ë\Û]KML›Ü™\ˆ›Ü™\‹\Û]KLL‚ˆİ[O^ŞÈZ[•ÚYˆ_O‚ˆÚ8nâHønäBˆİ‚ˆÜÛÜY›X\
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-100">
+            <th className="text-left py-2 px-3 text-slate-500 font-medium">ThÃ¡ng nháº­p</th>
+            {GROUPS.map(g => (
+              <th key={g.key} className={`text-right py-2 px-3 font-medium ${COLOR[g.color].badge}`}>
+                {g.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {months.map(m => (
+            <tr key={m} className="border-b border-slate-50 hover:bg-slate-50">
+              <td className="py-2 px-3 text-slate-600">ThÃ¡ng {m}</td>
+              {GROUPS.map(g => {
+                const v = getVal(data[g.key as GroupKey] as GroupData | undefined, m)
+                return (
+                  <td key={g.key} className="py-2 px-3 text-right font-semibold text-slate-800">
+                    {v > 0 ? v : <span className="text-slate-300">â€”</span>}
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
-‹JHOˆÂˆÛÛœİ\Ó]\İHHOOH]\İYˆ™]\›ˆ
-ˆÙ^O^Ú_BˆÛ\ÜÓ˜[YOHœKL‹HM^XÙ[\ˆ^^È›ÛX›Û˜XÚÚ[™Ë]ÚYH›Ü™\ˆ›Ü™\‹\Û]KLL‚ˆİ[O^Ú\Ó]\İˆÈÈ˜XÚÙÜ›İ[™ˆ	ÈÌØ™‰ËÛÛÜˆ	ÈÙ™™™™™‰ÈBˆˆÈ˜XÚÙÜ›İ[™ˆ	ÈÙ˜Y˜ÉËÛÛÜˆ	ÈÌŒMÌ˜IÈBˆO‚ˆÔİš[™Ê‹›[Û
-KœYİ\
-‹	Ì	Ê_KŞÜ‹YX\ŸBˆİ‚ˆ
-BˆJ_Bˆİ‚ˆİXY‚ˆ›ÙO‚ˆËÊˆ0è™ÈğïH1$
-‹ßBˆ‚ˆÛ\ÜÓ˜[YOHœKLÈM^^È›ÛX›Û\\˜Ø\ÙH˜XÚÚ[™Ë]ÚYH›Ü™\ˆ›Ü™\‹\Û]KLL‚ˆİ[O^ŞÈ˜XÚÙÜ›İ[™ˆ	ÈÙ™™ÙY	ËÛÛÜˆ	ÈÙXMNÉÈ_O‚ˆğïH1$ˆİ‚ˆÜÛÜY›X\
+/**
+ * Báº£ng so sÃ¡nh KÃ HÄ & DUYá»†T theo 4 thÃ¡ng gáº§n nháº¥t â€” layout Pivot (thÃ¡ng lÃ m cá»™t)
+ * - HÃ ng: KÃ½ HÄ / Duyá»‡t (bá» ChÃªnh lá»‡ch)
+ * - Cá»™t: tá»«ng thÃ¡ng, sáº¯p xáº¿p tÄƒng dáº§n
+ * - ThÃ¡ng gáº§n nháº¥t: header ná»n xanh (#3b82f6) chá»¯ tráº¯ng, Ã´ dá»¯ liá»‡u ná»n xanh nháº¡t
+ */
+function MonthCompareTable({ items }: { items: MonthCompareItem[] }) {
+  const sorted = [...items].sort((a, b) => {
+    if (a.year !== b.year) return a.year - b.year
+    return a.month - b.month
+  })
 
-‹JHOˆÂˆÛÛœİ\Ó]\İHHOOH]\İYˆ™]\›ˆ
-ˆÙ^O^Ú_BˆÛ\ÜÓ˜[YOHœKLÈM^XÙ[\ˆ›ÛY^˜X›Û›Ü™\ˆ›Ü™\‹\Û]KLL‚ˆİ[O^ŞÂˆ˜XÚÙÜ›İ[™ˆ\Ó]\İÈ	ÈÙ™XY™IÈˆ	ÈÙ™™ÙY	ËˆÛÛÜˆ	ÈÙMÌÌM‰Ëˆ›ÛÚ^™NˆŒˆ_O‚ˆÜ‹šŞRBˆİ‚ˆ
-BˆJ_Bˆİ‚ˆËÊˆ0è™È^xnáİ
-‹ßBˆ‚ˆÛ\ÜÓ˜[YOHœKLÈM^^È›ÛX›Û\\˜Ø\ÙH˜XÚÚ[™Ë]ÚYH›Ü™\ˆ›Ü™\‹\Û]KLL‚ˆİ[O^ŞÈ˜XÚÙÜ›İ[™ˆ	ÈÙY™™™‰ËÛÛÜˆ	ÈÌMŒÙX‰È_O‚ˆ^xnáİˆİ‚ˆÜÛÜY›X\
+  const latestIdx = sorted.length - 1
 
-‹JHOˆÂˆÛÛœİ\Ó]\İHHOOH]\İYˆ™]\›ˆ
-ˆÙ^O^Ú_BˆÛ\ÜÓ˜[YOHœKLÈM^XÙ[\ˆ›ÛY^˜X›Û›Ü™\ˆ›Ü™\‹\Û]KLL‚ˆİ[O^ŞÂˆ˜XÚÙÜ›İ[™ˆ\Ó]\İÈ	ÈØ™™™™IÈˆ	ÈÙY™™™‰ËˆÛÛÜˆ	ÈÌØ™‰Ëˆ›ÛÚ^™NˆŒˆ_O‚ˆÜ‹™^Y]Bˆİ‚ˆ
-BˆJ_Bˆİ‚ˆİ›ÙO‚ˆİX›O‚ˆÙ]‚‚ˆÙ]‚ˆ
-BŸB  {topTT.length 
+  return (
+    <div>
+      {/* â”€â”€ Pivot table â”€â”€ */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border-collapse" style={{ fontVariantNumeric: 'tabular-nums' }}>
+          <thead>
+            <tr>
+              <th className="text-left py-2.5 px-4 text-xs font-semibold text-slate-400 uppercase tracking-wide bg-slate-50 border border-slate-100"
+                  style={{ minWidth: 80 }}>
+                Chá»‰ sá»‘
+              </th>
+              {sorted.map((r, i) => {
+                const isLatest = i === latestIdx
+                return (
+                  <th key={i}
+                    className="py-2.5 px-4 text-center text-xs font-bold tracking-wide border border-slate-100"
+                    style={isLatest
+                      ? { background: '#3b82f6', color: '#ffffff' }
+                      : { background: '#f8fafc', color: '#0f172a' }
+                    }>
+                    T{String(r.month).padStart(2,'0')}/{r.year}
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {/* HÃ ng KÃ½ HÄ */}
+            <tr>
+              <td className="py-3 px-4 text-xs font-bold uppercase tracking-wide border border-slate-100"
+                  style={{ background: '#fff7ed', color: '#ea580c' }}>
+                KÃ½ HÄ
+              </td>
+              {sorted.map((r, i) => {
+                const isLatest = i === latestIdx
+                return (
+                  <td key={i}
+                    className="py-3 px-4 text-center font-extrabold border border-slate-100"
+                    style={{
+                      background: isLatest ? '#dbeafe' : '#fff7ed',
+                      color: '#f97316',
+                      fontSize: 20,
+                    }}>
+                    {r.kyHD}
+                  </td>
+                )
+              })}
+            </tr>
+            {/* HÃ ng Duyá»‡t */}
+            <tr>
+              <td className="py-3 px-4 text-xs font-bold uppercase tracking-wide border border-slate-100"
+                  style={{ background: '#eff6ff', color: '#2563eb' }}>
+                Duyá»‡t
+              </td>
+              {sorted.map((r, i) => {
+                const isLatest = i === latestIdx
+                return (
+                  <td key={i}
+                    className="py-3 px-4 text-center font-extrabold border border-slate-100"
+                    style={{
+                      background: isLatest ? '#bfdbfe' : '#eff6ff',
+                      color: '#3b82f6',
+                      fontSize: 20,
+                    }}>
+                    {r.duyet}
+                  </td>
+                )
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  )
+}
