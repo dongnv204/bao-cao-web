@@ -37,6 +37,18 @@ interface ThiTruongRow {
   thiTruong: string
   soUV: number
 }
+// ── Helper: chia mảng thành nhóm n phần tử ──────────────────────────
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = []
+  for (let i = 0; i < arr.length; i += size) result.push(arr.slice(i, i + size))
+  return result
+}
+
+// ── Helper: hiển thị số, null/empty → "—" ───────────────────────────
+function fmtNum(val: number | string | undefined | null): string | number {
+  if (val == null || val === '') return '—'
+  return val
+}
 
 interface BCPlatformData {
   month: number
@@ -516,12 +528,15 @@ export default function BCPlatformPage() {
                                 {row.formNhap != null ? row.formNhap.toLocaleString() : '—'}
                               </td>
                             )}
-                            <td className="py-2 px-3 text-right font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                            <td className="py-2 px-3 text-right font-bold text-blue-700 dark:text-blue-400 whitespace-nowrap">
                               {uvVal.toLocaleString()}
                             </td>
                             {hasDetailedDaily && (
                               <>
-                                <td className="py-2 px-3 text-right text-rose-500 dark:text-rose-400 whitespace-nowrap">
+                                <td className={`py-2 px-3 text-right whitespace-nowrap ${
+                                    row.trung == null ? 'text-slate-300' :
+                                    row.trung === 0 ? 'text-red-500' : 'text-red-600 font-semibold'
+                                  }`}>
                                   {row.trung != null ? row.trung : '—'}
                                 </td>
                                 <td className="py-2 px-3 text-right text-rose-400 dark:text-rose-300 text-xs whitespace-nowrap">
@@ -542,8 +557,11 @@ export default function BCPlatformPage() {
                                 <td className="py-2 px-3 text-right text-slate-500 whitespace-nowrap">
                                   {row.txct != null && row.txct !== '' ? row.txct : <span className="text-slate-300">—</span>}
                                 </td>
-                                <td className="py-2 px-3 text-right text-purple-500 dark:text-purple-400 whitespace-nowrap">
-                                  {row.trongTT != null && row.trongTT !== '' ? row.trongTT : <span className="text-slate-300">—</span>}
+                                <td className={`py-2 px-3 text-right whitespace-nowrap ${
+                                    (row.trongTT == null || row.trongTT === '') ? 'text-slate-300' :
+                                    Number(row.trongTT) === 0 ? 'text-orange-400' : 'text-orange-500 font-semibold'
+                                  }`}>
+                                  {(row.trongTT == null || row.trongTT === '') ? '—' : row.trongTT}
                                 </td>
                               </>
                             )}
@@ -557,19 +575,19 @@ export default function BCPlatformPage() {
                       })}
                     </tbody>
                     <tfoot>
-                      <tr className="bg-blue-50 dark:bg-blue-900/30 border-t-2 border-blue-200 dark:border-blue-700 font-bold text-blue-700 dark:text-blue-300">
+                      <tr className="bg-blue-800 text-white font-bold">
                         <td className="py-2.5 px-3 text-sm" colSpan={hasDetailedDaily ? 3 : 1}>TỔNG</td>
-                        <td className="py-2.5 px-3 text-right text-base">
+                        <td className="py-2.5 px-3 text-right text-base font-extrabold">
                           {d.uvTheoNgay
                             .reduce((s, r) => s + (r.uvNet ?? r.soLuong ?? 0), 0)
                             .toLocaleString()}
                         </td>
                         {hasDetailedDaily && (
                           <>
-                            <td className="py-2.5 px-3 text-right text-rose-600">
+                            <td className="py-2.5 px-3 text-right text-red-300">
                               {d.uvTheoNgay.reduce((s, r) => s + (r.trung ?? 0), 0)}
                             </td>
-                            <td className="py-2.5 px-3 text-right text-xs text-slate-400">
+                            <td className="py-2.5 px-3 text-right text-xs text-red-200">
                               {tq.tyLeTrung}
                             </td>
                             <td className="py-2.5 px-3 text-right">
@@ -587,7 +605,7 @@ export default function BCPlatformPage() {
                             <td className="py-2.5 px-3 text-right">
                               {d.uvTheoNgay.reduce((s, r) => s + (Number(r.txct) || 0), 0) || '—'}
                             </td>
-                            <td className="py-2.5 px-3 text-right text-purple-600">
+                            <td className="py-2.5 px-3 text-right text-orange-300">
                               {d.uvTheoNgay.reduce((s, r) => s + (Number(r.trongTT) || 0), 0) || '—'}
                             </td>
                           </>
@@ -604,70 +622,65 @@ export default function BCPlatformPage() {
               </Section>
             )}
 
-            {/* ══ BẢNG 3: Thị Trường ══ */}
+            {/* ══ BẢNG 3: Thị Trường — 4 cột song song ══ */}
             {d.thiTruong && d.thiTruong.length > 0 && (
               <Section
                 title="Bảng 3 — Thị Trường (UV Net theo khu vực)"
                 icon="🗺️"
               >
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                <div className="overflow-x-auto -mx-1">
+                  <table className="w-full text-sm border-collapse min-w-[600px]">
                     <thead>
-                      <tr className="bg-gradient-to-r from-slate-600 to-slate-700 text-white text-xs">
+                      <tr className="bg-blue-800 text-white text-xs">
                         <th className="py-2.5 px-4 text-left font-semibold rounded-tl-lg">Thị Trường</th>
                         <th className="py-2.5 px-4 text-right font-semibold">Số UV</th>
-                        <th className="py-2.5 px-4 text-right font-semibold rounded-tr-lg">Tỷ lệ</th>
+                        <th className="py-2.5 px-4 text-left font-semibold border-l border-blue-700">Thị Trường</th>
+                        <th className="py-2.5 px-4 text-right font-semibold">Số UV</th>
+                        <th className="py-2.5 px-4 text-left font-semibold border-l border-blue-700">Thị Trường</th>
+                        <th className="py-2.5 px-4 text-right font-semibold">Số UV</th>
+                        <th className="py-2.5 px-4 text-left font-semibold border-l border-blue-700">Thị Trường</th>
+                        <th className="py-2.5 px-4 text-right font-semibold rounded-tr-lg">Số UV</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {d.thiTruong.map((row, i) => {
-                        const total = d.thiTruong!.reduce((s, r) => s + r.soUV, 0)
-                        const pct = total > 0 ? ((row.soUV / total) * 100).toFixed(1) : '0'
-                        const barW = total > 0 ? (row.soUV / total) * 100 : 0
-                        return (
-                          <tr
-                            key={i}
-                            className={`border-b border-slate-100 dark:border-gray-700 hover:bg-slate-50/60 dark:hover:bg-gray-700/30 transition-colors ${
-                              i % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50/50 dark:bg-gray-800/60'
-                            }`}
-                          >
-                            <td className="py-2.5 px-4 text-slate-700 dark:text-gray-300 font-medium">
-                              {row.thiTruong}
+                      {chunkArray(d.thiTruong, 4).map((group, rowIdx) => (
+                        <tr
+                          key={rowIdx}
+                          className={`border-b border-slate-100 dark:border-gray-700 hover:bg-blue-50/30 transition-colors ${
+                            rowIdx % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50/60 dark:bg-gray-800/60'
+                          }`}
+                        >
+                          {([0, 1, 2, 3] as const).flatMap(colIdx => [
+                            <td
+                              key={`name-${colIdx}`}
+                              className={`py-2 px-4 text-slate-700 dark:text-gray-300 whitespace-nowrap ${colIdx > 0 ? 'border-l border-slate-100 dark:border-gray-700' : ''}`}
+                            >
+                              {group[colIdx]?.thiTruong ?? ''}
+                            </td>,
+                            <td
+                              key={`uv-${colIdx}`}
+                              className="py-2 px-4 text-right font-semibold text-green-600 dark:text-green-400 whitespace-nowrap"
+                            >
+                              {group[colIdx]?.soUV != null ? group[colIdx].soUV.toLocaleString() : ''}
                             </td>
-                            <td className="py-2.5 px-4 text-right font-semibold text-slate-800 dark:text-gray-200">
-                              {row.soUV.toLocaleString()}
-                            </td>
-                            <td className="py-2.5 px-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <div className="w-16 bg-slate-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                                  <div
-                                    className="bg-blue-500 h-1.5 rounded-full"
-                                    style={{ width: `${barW}%` }}
-                                  />
-                                </div>
-                                <span className="text-xs text-slate-500 w-10 text-right">{pct}%</span>
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
+                          ])}
+                        </tr>
+                      ))}
                     </tbody>
                     <tfoot>
-                      <tr className="bg-blue-50 dark:bg-blue-900/30 border-t-2 border-blue-200 dark:border-blue-700 font-bold text-blue-700 dark:text-blue-300">
-                        <td className="py-2.5 px-4">
-                          Tổng số thị trường: {d.thiTruong.length}
+                      <tr className="bg-blue-800 text-white font-bold">
+                        <td colSpan={7} className="py-2.5 px-4 text-sm">
+                          TỔNG SỐ THỊ TRƯỜNG: {d.thiTruong.length}
                         </td>
-                        <td className="py-2.5 px-4 text-right text-base">
+                        <td className="py-2.5 px-4 text-right text-base font-extrabold">
                           {d.thiTruong.reduce((s, r) => s + r.soUV, 0).toLocaleString()}
                         </td>
-                        <td className="py-2.5 px-4 text-right text-sm">100%</td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
               </Section>
             )}
-
             {/* Fallback nếu không có thiTruong nhưng có phanLoaiTrangThai (tóm tắt) */}
             {!d.thiTruong && d.phanLoaiTrangThai && (
               <Section title="Tóm tắt tổng quan" icon="📋">
