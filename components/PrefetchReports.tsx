@@ -70,7 +70,21 @@ export default function PrefetchReports() {
         })
         .catch(() => {})
     }
-  }, []) // chỉ chạy 1 lần khi dashboard mount
+
+    // ── BC Platform (tháng hiện tại) ─────────────────────────────────
+    const keyPlatform = `bc-platform:${month}:${year}`
+    if (!cacheGet(keyPlatform)) {
+      fetch(`/api/reports/bc-platform?month=${month}&year=${year}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (d) {
+            cacheSet(keyPlatform, d)
+            window.dispatchEvent(new CustomEvent('prefetch:bc-platform', { detail: { data: d, month, year } }))
+          }
+        })
+        .catch(() => {})
+    }
+    }, []) // chỉ chạy 1 lần khi dashboard mount
 
   return null
 }

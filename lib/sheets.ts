@@ -58,3 +58,17 @@ export function clearCacheBcTong()   { revalidateTag('bc-tong')  }
 export async function fetchReportData(reportType: string, params?: Record<string, string>) {
   return _rawFetch(APPS_SCRIPT_URL, reportType, params)
 }
+
+// ── BC Platform — cache 60 phút, tag: bc-platform ────────────────────
+const APPS_SCRIPT_URL_BC_PLATFORM = process.env.APPS_SCRIPT_URL_BC_PLATFORM || ''
+
+export const getBCPlatformReport = unstable_cache(
+  async (month: number, year: number) =>
+    _rawFetch(APPS_SCRIPT_URL_BC_PLATFORM, 'bc-platform', {
+      month: String(month), year: String(year),
+    }),
+  ['bc-platform', 'month', 'year'],
+  { revalidate: 3600, tags: ['bc-platform'] }
+)
+
+export function clearCacheBcPlatform() { revalidateTag('bc-platform') }
