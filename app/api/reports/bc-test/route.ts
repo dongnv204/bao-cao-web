@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     const { statsThang, statsNgay, dailyList } = await getMonthBundle(month, year, currentDay)
 
     const sThang = statsToFields(statsThang)
-    const sNgay  = statsNgay ? statsToFields(statsNgay) : statsToFields({ formNhap: 0, hopLe: 0, trung: 0, chuaCheck: 0, uvNet: 0, byRecruiter: [] })
+    const sNgay  = statsNgay ? statsToFields(statsNgay) : statsToFields({ formNhap: 0, hopLe: 0, trung: 0, chuaCheck: 0, uvNet: 0, byRecruiter: [] , phanLoaiBreakdown: []})
 
     // ── BẢNG 1 ─────────────────────────────────────────────────────────────────
     const bang1 = {

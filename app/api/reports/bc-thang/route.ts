@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifySession } from '@/lib/auth'
 import { getBCThangReport } from '@/lib/sheets'
 
-// API route: lấy báo cáo tháng tuyển dụng từ Google Sheets (qua Apps Script)
-// Params: ?month=M&year=YYYY
+/**
+ * GET /api/reports/bc-thang?month=M&year=YYYY
+ *
+ * Đọc BC Tháng từ Apps Script (data được pre-cache bởi refreshBCThang()
+ * chạy mỗi giờ → phản hồi < 1s, không còn timeout 55s).
+ */
 export async function GET(request: NextRequest) {
   const user = await verifySession()
   if (!user) {

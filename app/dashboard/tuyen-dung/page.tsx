@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTabsStore } from '../tabs-store'
 import { useMemo, useState as useLocalState } from 'react'
 import ExportButtons from '@/components/ExportButtons'
-import { cacheGet, cacheGetStale, cacheSet, cacheClear } from '@/lib/cache'
+import { cacheGet, cacheGetStale, cacheSet, cacheClear, cacheRemainingSeconds } from '@/lib/cache'
 import { DailyTrendChart } from '@/components/charts/RecruitChart'
 import ComparePanel, { CompareRow } from '@/components/ComparePanel'
 import { exportBCNgayExcel } from '@/lib/export-utils'
+import { useToast } from '@/components/Toast'
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
 
 // ════════════════════════════════════════════════════════════════
 //  TYPES
@@ -216,6 +218,7 @@ export default function TuyenDungPage() {
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   const nextId   = useRef(2)
   const { getPage, savePage } = useTabsStore()
+  const { toast, dismiss }   = useToast()
 
   // ── Tabs — khôi phục từ store nếu đã từng mở trang này ───────────────
   const [tabs, setTabs] = useState<TabState[]>(() => {
@@ -288,30 +291,59 @@ export default function TuyenDungPage() {
   // Tải dữ liệu — SWR: nếu có stale cache thì show ngay, fetch mới ở background
   const loadData = useCallback(async (dateStr: string, tabId: string, skipCache = false) => {
     if (!skipCache) {
-      // Cache còn valid → dùng ngay, không fetch
+      // Cache còn valid → dùng ngay, hiển thị toast cache
       const fresh = cacheGet<ReportData>(`bc-ngay:${dateStr}`)
-      if (fresh) { updateTab(tabId, { data: fresh, loading: false, error: '' }); return }
+      if (fresh) {
+        updateTab(tabId, { data: fresh, loading: false, error: '' })
+        const secs = cacheRemainingSeconds(`bc-ngay:${dateStr}`)
+        const mins = Math.ceil(secs / 60)
+        toast('info', 'Từ cache', `Dữ liệu ${dateStr} · còn hạn ${mins} phút`)
+        return
+      }
 
       // Cache expired nhưng vẫn còn stale data → show ngay + fetch mới ngầm
       const stale = cacheGetStale<ReportData>(`bc-ngay:${dateStr}`)
       if (stale) {
         updateTab(tabId, { data: stale, loading: false, refreshing: true, error: '' })
-        try { await _fetchFromServer(dateStr, tabId) } catch { /* silent — stale data vẫn hiển thị */ }
+        try {
+          await _fetchFromServer(dateStr, tabId)
+          toast('success', 'Làm mới xong!', `Dữ liệu ${dateStr}`)
+        } catch { /* silent — stale data vẫn hiển thị */ }
         finally { updateTab(tabId, { refreshing: false }) }
         return
       }
     }
 
-    // Không có cache gì → show spinner, chờ fetch
-    updateTab(tabId, { loading: true, error: '' })
+    // Không có cache gì → show spinner + toast loading
+    updateTab(tabId, { loading: true, error: '', data: null })
+    const loadingId = toast('loading', 'Đang tải...', dateStr)
     try {
       await _fetchFromServer(dateStr, tabId)
+      dismiss(loadingId)
+      toast('success', 'Đã tải xong!', `Dữ liệu ${dateStr}`)
     } catch (e: any) {
+      dismiss(loadingId)
+      toast('error', 'Lỗi tải dữ liệu', (e as Error).message)
       updateTab(tabId, { data: null, error: e?.message || 'Lỗi kết nối máy chủ' })
     } finally {
       updateTab(tabId, { loading: false })
     }
-  }, [updateTab, _fetchFromServer])
+  }, [updateTab, _fetchFromServer, toast, dismiss])
+
+  // Lắng nghe tín hiệu refresh từ Supabase Realtime (Apps Script → Supabase → Web)
+  useRealtimeRefresh(
+    useCallback(() => {
+      toast('info', '📊 Dữ liệu mới!', 'Google Sheets vừa cập nhật — đang tải lại...')
+      const id = activeTabId
+      const t  = activeTab
+      updateTab(id, { refreshing: true })
+      cacheClear(`bc-ngay:${t.date}`)
+      fetch(`/api/revalidate?tag=bc-ngay`, { method: 'POST' }).catch(() => {})
+        .then(() => loadData(t.date, id, true))
+        .finally(() => updateTab(id, { refreshing: false }))
+    }, [toast, activeTabId, activeTab, updateTab, loadData]),
+    'bc-ngay'
+  )
 
   // Đồng bộ tabs → store mỗi khi thay đổi
   useEffect(() => { savePage('bc-ngay', { tabs, activeTabId }) }, [tabs, activeTabId, savePage])
@@ -526,8 +558,8 @@ export default function TuyenDungPage() {
                     <KpiProgress label="HL Net"      val={b1.hlNetThang}                        target={b1.targetHlNetThang}                         bg="bg-[#f9a825]" />
                     <KpiProgress label="Trùng Net"   val={b1.trungNetThang}                     target={b1.targetTrungThang}                         bg="bg-[#4a148c]" />
                     <div className="grid grid-cols-2 gap-2">
-                      <KpiSingle label="HL Thô"    val={b1.hlThoNgay ?? b2.tho.hlTho}    bg="bg-blue-700" />
-                      <KpiSingle label="Trùng Thô" val={b1.trungThoNgay ?? b2.tho.trungTho} bg="bg-blue-900" />
+                      <KpiSingle label="HL Thô"    val={b1.hlThoThang ?? b2.tho.hlTho}    bg="bg-blue-700" />
+                      <KpiSingle label="Trùng Thô" val={b1.trungThoThang ?? b2.tho.trungTho} bg="bg-blue-900" />
                     </div>
                   </div>
                 </div>

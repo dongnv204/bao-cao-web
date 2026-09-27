@@ -6,7 +6,7 @@ import { useMemo, useState as useLocalState } from 'react'
 import ExportButtons from '@/components/ExportButtons'
 import ComparePanel, { CompareRow } from '@/components/ComparePanel'
 import { exportBCThangExcel } from '@/lib/export-utils'
-import { cacheGet, cacheGetStale, cacheSet, cacheClear } from '@/lib/cache'
+import { cacheGet, cacheGetStale, cacheSet, cacheClear, cacheRemainingSeconds } from '@/lib/cache'
 import { FunnelChart, WeeklyChart, MarketChart } from '@/components/charts/RecruitChart'
 import { useToast } from '@/components/Toast'
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh'
@@ -117,7 +117,13 @@ export default function BCThangPage() {
     if (!skipCache) {
       // Cache còn valid → dùng ngay
       const fresh = cacheGet<BCThangData>(`bc-thang:${m}:${y}`)
-      if (fresh) { updateTab(tabId, { data: fresh, loading: false, error: '' }); return }
+      if (fresh) {
+        updateTab(tabId, { data: fresh, loading: false, error: '' })
+        const secs = cacheRemainingSeconds(`bc-thang:${m}:${y}`)
+        const mins = Math.ceil(secs / 60)
+        toast('info', 'Từ cache', `Dữ liệu T${m}/${y} · còn hạn ${mins} phút`)
+        return
+      }
 
       // Cache expired nhưng có stale data → show ngay + fetch mới ngầm
       const stale = cacheGetStale<BCThangData>(`bc-thang:${m}:${y}`)
