@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useState as useLocalState } from 'react'
 import { useTabsStore } from '../tabs-store'
 import ExportButtons from '@/components/ExportButtons'
-import { cacheGet, cacheGetStale, cacheSet, cacheClear } from '@/lib/cache'
+import { cacheGet, cacheGetStale, cacheSet, cacheClear, cacheRemainingSeconds } from '@/lib/cache'
 import ComparePanel, { CompareRow } from '@/components/ComparePanel'
 import { exportBCTongExcel } from '@/lib/export-utils'
 import { useToast } from '@/components/Toast'
@@ -88,10 +88,6 @@ const COLOR: Record<string, { card: string; badge: string; bar: string }> = {
   indigo: { card: 'bg-indigo-50 border-indigo-100',  badge: 'text-indigo-700',  bar: 'bg-indigo-500'  },
 }
 
-const BAR_COLOR: Record<string, string> = {
-  blue: '#3b82f6', orange: '#f97316', green: '#10b981', indigo: '#6366f1',
-}
-
 // ═══════════════════════════════════════════════════════════════════
 // MULTI-TAB STATE
 // ═══════════════════════════════════════════════════════════════════
@@ -107,40 +103,20 @@ interface TabState {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// PROPS
+// COMPONENT CHÍNH (không còn props SSR)
 // ═══════════════════════════════════════════════════════════════════
 
-interface BCTongClientProps {
-  /** Dữ liệu SSR pre-fetch từ Server Component — hiển thị ngay khi mở trang */
-  initialData:  BCTongData | null
-  initialMonth: number
-  initialYear:  number
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// COMPONENT CHÍNH
-// ═══════════════════════════════════════════════════════════════════
-
-export default function BCTongClient({ initialData, initialMonth, initialYear }: BCTongClientProps) {
+export default function BCTongClient() {
   const now    = new Date()
   const nextId = useRef(2)
   const { getPage, savePage } = useTabsStore()
   const { toast, dismiss }    = useToast()
 
-  // ── Tabs — khôi phục từ store hoặc dùng SSR initialData ──────────
+  // ── Tabs — khôi phục từ store nếu đã từng mở trang này ──────────
   const [tabs, setTabs] = useState<TabState[]>(() => {
     const s = getPage('bc-tong')
     if (s && s.tabs.length > 0) return s.tabs as TabState[]
-    // Nếu không có store data, dùng initialData từ SSR
-    return [{
-      id:         '1',
-      month:      initialMonth,
-      year:       initialYear,
-      data:       initialData,   // hiển thị ngay nếu SSR đã fetch được
-      loading:    false,
-      error:      '',
-      refreshing: false,
-    }]
+    return [{ id: '1', month: now.getMonth() + 1, year: now.getFullYear(), data: null, loading: false, error: '', refreshing: false }]
   })
   const [activeTabId, setActiveTabId] = useState<string>(() => {
     const s = getPage('bc-tong')
@@ -193,7 +169,7 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
   const _fetchFromServer = useCallback(async (m: number, y: number, tabId: string) => {
     const res = await fetch(`/api/reports/bc-tong?month=${m}&year=${y}`)
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || `HTTP ${res.status}`) }
-    const d = await res.json()
+    const d: BCTongData = await res.json()
     cacheSet(`bc-tong:${m}:${y}`, d)
     updateTab(tabId, { data: d })
     return d
@@ -202,38 +178,48 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
   // ── SWR: cache còn hạn → dùng ngay; stale → show + refetch ngầm ──
   const fetchData = useCallback(async (m: number, y: number, tabId: string, skipCache = false) => {
     if (!skipCache) {
+      // Cache còn valid → dùng ngay
       const fresh = cacheGet<BCTongData>(`bc-tong:${m}:${y}`)
       if (fresh) {
         updateTab(tabId, { data: fresh, loading: false, error: '' })
-        toast('info', 'Từ cache', `Dữ liệu T${m}/${y} · còn hạn 60 phút`)
+        const secs = cacheRemainingSeconds(`bc-tong:${m}:${y}`)
+        const mins = Math.ceil(secs / 60)
+        toast('info', 'Từ cache', `Dữ liệu T${m}/${y} · còn hạn ${mins} phút`)
         return
       }
+
+      // Cache expired nhưng có stale data → show ngay + fetch mới ngầm
       const stale = cacheGetStale<BCTongData>(`bc-tong:${m}:${y}`)
       if (stale) {
         updateTab(tabId, { data: stale, loading: false, refreshing: true, error: '' })
         try {
           const d = await _fetchFromServer(m, y, tabId)
-          toast('success', `Làm mới xong T${m}/${y}`, `Cập nhật: ${d.updatedAt ?? 'từa xong'}`)
+          if (d.empty) toast('info', 'Không có dữ liệu', d.message ?? `Tháng ${m}/${y} chưa có dữ liệu`)
+          else          toast('success', 'Làm mới xong!', `Dữ liệu tháng ${m}/${y}`)
         } catch { /* silent — stale data vẫn hiển thị */ }
         finally { updateTab(tabId, { refreshing: false }) }
         return
       }
     }
+
+    // Không có cache gì → show spinner
     updateTab(tabId, { loading: true, error: '', data: null })
-    const loadingId = toast('loading', `Đang tải T${m}/${y}...`)
+    const loadingId = toast('loading', 'Đang tải...', `Tháng ${m}/${y}`)
     try {
       const d = await _fetchFromServer(m, y, tabId)
       dismiss(loadingId)
-      toast('success', `Tải xong T${m}/${y}`, `Cập nhật: ${d.updatedAt ?? 'vừa xong'}`)
+      if (d.empty) toast('info', 'Không có dữ liệu', d.message ?? `Tháng ${m}/${y} chưa có dữ liệu`)
+      else          toast('success', 'Đã tải xong!', `Dữ liệu tháng ${m}/${y}`)
     } catch (e: any) {
-      updateTab(tabId, { error: e.message })
       dismiss(loadingId)
-      toast('error', 'Lỗi tải dữ liệu', e.message)
+      toast('error', 'Lỗi tải dữ liệu', (e as Error).message)
+      updateTab(tabId, { error: (e as Error).message })
     } finally {
       updateTab(tabId, { loading: false })
     }
   }, [updateTab, toast, dismiss, _fetchFromServer])
 
+  // Xoá cache client + server rồi tải lại
   const refreshData = useCallback(async () => {
     const id = activeTabId
     const t  = activeTab
@@ -247,7 +233,7 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
   // ── Supabase Realtime — tự động refresh khi GAS gửi tín hiệu ──
   useRealtimeRefresh(
     useCallback(() => {
-      toast('info', 'Dữ liệu mới!', 'Google Sheets vừa cập nhật — đang tải lại...')
+      toast('info', '📊 Dữ liệu mới!', 'Google Sheets vừa cập nhật — đang tải lại...')
       refreshData()
     }, [toast, refreshData]),
     'bc-tong'
@@ -256,43 +242,42 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
   // Đồng bộ tabs → store
   useEffect(() => { savePage('bc-tong', { tabs, activeTabId }) }, [tabs, activeTabId, savePage])
 
+  // Fix nextId khi khôi phục từ store
   useEffect(() => {
     const maxId = Math.max(...tabs.map(t => Number(t.id)))
     if (maxId >= nextId.current) nextId.current = maxId + 1
-  }, [])
+  }, []) // chỉ chạy 1 lần lúc mount
 
-  // Tải lần đầu:
-  // - Nếu SSR đã có initialData → lưu vào localStorage cache + không cần fetch thêm
-  // - Nếu không có data → fetch từ server như bình thường
+  // Deep link — đọc ?month=X&year=Y từ URL khi mount
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search)
+      const m = Number(p.get('month')), y = Number(p.get('year'))
+      if (m >= 1 && m <= 12 && y >= 2020) {
+        updateTab('1', { month: m, year: y })
+        fetchData(m, y, '1')
+        return
+      }
+    } catch {}
+  }, []) // eslint-disable-line
+
+  // Cập nhật URL khi active tab thay đổi
+  useEffect(() => {
+    const t = tabs.find(x => x.id === activeTabId)
+    if (!t) return
+    try {
+      const u = new URL(window.location.href)
+      u.searchParams.set('month', String(t.month))
+      u.searchParams.set('year',  String(t.year))
+      window.history.replaceState(null, '', u.toString())
+    } catch {}
+  }, [activeTabId, tabs.map(t => `${t.month}-${t.year}`).join()])
+
+  // Tải lần đầu — bỏ qua nếu tab đã có data (khôi phục từ store)
   useEffect(() => {
     const first = tabs[0]
-    if (first.data) {
-      // SSR data: lưu vào localStorage để lần sau hiển thị ngay
-      const cacheKey = `bc-tong:${first.month}:${first.year}`
-      if (!cacheGet<BCTongData>(cacheKey)) {
-        cacheSet(cacheKey, first.data)
-      }
-      return
-    }
-    if (!first.loading) fetchData(first.month, first.year, first.id)
+    if (!first.data && !first.loading) fetchData(first.month, first.year, first.id)
   }, [])
-
-  // Deep link — đọc ?month=&year= từ URL
-  useEffect(() => {
-    const p = new URLSearchParams(window.location.search)
-    const m = Number(p.get('month')), y = Number(p.get('year'))
-    if (m >= 1 && m <= 12 && y >= 2020) {
-      updateTab(activeTabId, { month: m, year: y })
-      fetchData(m, y, activeTabId)
-    }
-  }, [])
-
-  // Cập nhật URL khi tab thay đổi
-  useEffect(() => {
-    const u = new URLSearchParams()
-    u.set('month', String(month)); u.set('year', String(year))
-    window.history.replaceState(null, '', '?' + u.toString())
-  }, [month, year])
 
   // ── Tab management ────────────────────────────────────────────
   const addTab = () => {
@@ -315,7 +300,6 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
     }
   }
 
-
   const tq       = data?.tongQuan
   const cleanTq  = data?.cleanTongQuan
   const hasData  = !!tq
@@ -332,12 +316,13 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
       <div className="flex items-center gap-1 bg-slate-100 rounded-xl px-2 py-1.5 overflow-x-auto mb-1">
         {tabs.map(tab => {
           const isActive = tab.id === activeTabId
+          const label = `T${tab.month}/${tab.year}`
           return (
             <div key={tab.id}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition whitespace-nowrap
                 ${isActive ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'}`}
               onClick={() => setActiveTabId(tab.id)}>
-              <span>{tab.loading ? '⏳' : '📊'} T{tab.month}/{tab.year}</span>
+              <span>{tab.loading ? '⏳' : '📊'} {label}</span>
               {tabs.length > 1 && (
                 <button onClick={e => { e.stopPropagation(); closeTab(tab.id) }}
                   className="ml-1 text-slate-400 hover:text-red-400 transition leading-none">×</button>
@@ -361,24 +346,22 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
           <h1 className="text-2xl font-bold text-slate-900">
             Báo Cáo Tổng {String(month).padStart(2, '0')}/{year}
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Thống kê UV đậu PV / đào tạo / ký HĐ / duyệt
-            {data && !data.empty && ` · Cập nhật: ${data.updatedAt}`}
-            {refreshing && <span className="ml-2 text-amber-500">↻ Đang làm mới...</span>}
-          </p>
+          {data && !data.empty && (
+            <p className="text-xs text-slate-400 mt-0.5">Cập nhật: {data.updatedAt}</p>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
           <select value={month}
             onChange={e => { const m = Number(e.target.value); updateTab(activeTabId, { month: m }); fetchData(m, activeTab.year, activeTabId) }}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
               <option key={m} value={m}>Tháng {m}</option>
             ))}
           </select>
           <select value={year}
             onChange={e => { const y = Number(e.target.value); updateTab(activeTabId, { year: y }); fetchData(activeTab.month, y, activeTabId) }}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
           <button onClick={() => fetchData(month, year, activeTabId)} disabled={loading}
@@ -408,14 +391,10 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
         </div>
       )}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-red-700 text-sm">
-          ⚠️ {error}
-        </div>
+        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-red-700 text-sm">⚠️ {error}</div>
       )}
       {data?.empty && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-amber-700 text-sm">
-          📭 {data.message}
-        </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 text-amber-700 text-sm">📭 {data.message}</div>
       )}
 
       {/* ══════════════════════════════════════════════════════════
@@ -436,7 +415,7 @@ export default function BCTongClient({ initialData, initialMonth, initialYear }:
             Đã loại UV trùng SĐT xuyên nhóm · Đã loại trạng thái "TX Nghỉ Việc" và "Nhập lại"
           </p>
 
-          {/* ── Bảng 1: Tổng quan N 4 nhóm (Đã Lọc) ────────────────── */}
+          {/* ── Bảng 1: Tổng quan 4 nhóm (Đã Lọc) ────────────────── */}
           <Section title={`Bảng 1 — Tổng quan chuyển đổi T${String(month).padStart(2,'0')}/${year} (Đã Lọc)`} badge="Đã Lọc" badgeColor="green">
             {!cleanTq && (
               <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
