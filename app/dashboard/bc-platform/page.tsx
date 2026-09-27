@@ -14,8 +14,29 @@ interface TongQuan {
   tyLeTrung: string
 }
 
-interface PhanLoaiRow  { label: string; soLuong: number }
-interface UVTheoNgayRow { ngay: string; soLuong: number }
+interface PhanLoaiRow { label: string; soLuong: number }
+
+interface UVTheoNgayRow {
+  ngay: string
+  thu?: string
+  formNhap?: number
+  uvNet?: number
+  trung?: number
+  pctTrung?: string
+  moApp?: number | string
+  nopHS?: number | string
+  loai?: number | string
+  taiTuyen?: number | string
+  txct?: number | string
+  trongTT?: number | string
+  // fallback nếu API chỉ trả về đơn giản
+  soLuong?: number
+}
+
+interface ThiTruongRow {
+  thiTruong: string
+  soUV: number
+}
 
 interface BCPlatformData {
   month: number
@@ -26,6 +47,7 @@ interface BCPlatformData {
   tongQuan?: TongQuan
   phanLoaiTrangThai?: PhanLoaiRow[]
   uvTheoNgay?: UVTheoNgayRow[]
+  thiTruong?: ThiTruongRow[]
 }
 
 // ── Multi-tab state ────────────────────────────────────────────────────
@@ -39,24 +61,86 @@ interface TabState {
   refreshing: boolean
 }
 
+// ── Màu sắc cho phân loại trạng thái ──────────────────────────────────
+const STATUS_COLORS: Record<string, { bg: string; text: string; icon: string }> = {
+  'Đã mở app':       { bg: 'from-blue-500 to-blue-700',     text: 'text-blue-100', icon: '📱' },
+  'Đã nộp HS online':{ bg: 'from-teal-500 to-teal-700',     text: 'text-teal-100', icon: '📄' },
+  'Loại':            { bg: 'from-gray-500 to-gray-700',     text: 'text-gray-100', icon: '✗' },
+  'Tái Tuyển':       { bg: 'from-orange-400 to-orange-600', text: 'text-orange-100', icon: '🔄' },
+  'TXCT':            { bg: 'from-indigo-500 to-indigo-700', text: 'text-indigo-100', icon: '📋' },
+  'Trống (chưa có TT)': { bg: 'from-purple-500 to-purple-700', text: 'text-purple-100', icon: '⬜' },
+}
+const STATUS_COLORS_DEFAULT = [
+  { bg: 'from-blue-500 to-blue-700',   text: 'text-blue-100',   icon: '📊' },
+  { bg: 'from-green-500 to-green-700', text: 'text-green-100',  icon: '✓' },
+  { bg: 'from-red-500 to-red-700',     text: 'text-red-100',    icon: '✗' },
+  { bg: 'from-orange-400 to-orange-600', text: 'text-orange-100', icon: '⚡' },
+  { bg: 'from-indigo-500 to-indigo-700', text: 'text-indigo-100', icon: '📋' },
+  { bg: 'from-purple-500 to-purple-700', text: 'text-purple-100', icon: '⬜' },
+]
+
 // ── Sub-components ─────────────────────────────────────────────────────
-function KpiCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+
+// KPI Card lớn với gradient và icon
+function KpiCard({
+  label, value, sub, gradient, icon,
+}: {
+  label: string; value: string | number; sub?: string
+  gradient: string; icon: string
+}) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    <div className={`bg-gradient-to-br ${gradient} text-white rounded-2xl px-5 py-4 shadow-lg relative overflow-hidden`}>
+      {/* Decorative circle */}
+      <div className="absolute -top-3 -right-3 w-20 h-20 rounded-full bg-white/10" />
+      <div className="absolute -bottom-4 -right-6 w-28 h-28 rounded-full bg-white/5" />
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold opacity-80 uppercase tracking-wider">{label}</p>
+          <span className="text-xl opacity-90">{icon}</span>
+        </div>
+        <p className="text-3xl font-extrabold leading-none">{value}</p>
+        {sub && <p className="text-xs opacity-70 mt-1.5">{sub}</p>}
+      </div>
     </div>
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+// Section wrapper với border accent đẹp
+function Section({
+  title, subtitle, children, icon,
+}: {
+  title: string; subtitle?: string; children: React.ReactNode; icon?: string
+}) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-        <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">{title}</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-slate-200 dark:border-gray-700 shadow-sm overflow-hidden">
+      <div className="px-5 py-3.5 bg-gradient-to-r from-slate-50 to-white dark:from-gray-800 dark:to-gray-750 border-b border-slate-200 dark:border-gray-700 flex items-center gap-2">
+        {icon && <span className="text-base">{icon}</span>}
+        <div>
+          <h2 className="text-sm font-bold text-slate-700 dark:text-gray-200 tracking-wide">{title}</h2>
+          {subtitle && <p className="text-xs text-slate-400 dark:text-gray-500 mt-0.5">{subtitle}</p>}
+        </div>
       </div>
-      <div className="p-4">{children}</div>
+      <div className="p-5">{children}</div>
+    </div>
+  )
+}
+
+// Status card nhỏ cho Phân Loại Trạng Thái
+function StatusCard({ label, value, gradient, textColor, icon, totalUVNet }: {
+  label: string; value: number; gradient: string; textColor: string; icon: string; totalUVNet: number
+}) {
+  const pct = totalUVNet > 0 ? Math.round((value / totalUVNet) * 100) : 0
+  return (
+    <div className={`bg-gradient-to-br ${gradient} rounded-xl px-4 py-3 text-white shadow-md relative overflow-hidden`}>
+      <div className="absolute -top-2 -right-2 w-14 h-14 rounded-full bg-white/10" />
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-lg">{icon}</span>
+          <span className={`text-xs ${textColor} opacity-80`}>{pct}%</span>
+        </div>
+        <p className="text-2xl font-extrabold leading-none">{value}</p>
+        <p className="text-xs opacity-75 mt-1 leading-tight">{label}</p>
+      </div>
     </div>
   )
 }
@@ -90,7 +174,6 @@ export default function BCPlatformPage() {
     setTabs(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t))
   }, [])
 
-  // Persist tabs to store
   useEffect(() => {
     savePage('bc-platform', { tabs, activeTabId })
   }, [tabs, activeTabId, savePage])
@@ -102,14 +185,11 @@ export default function BCPlatformPage() {
     id: string, month: number, year: number, opts?: { force?: boolean; background?: boolean }
   ) => {
     const key = `bc-platform:${month}:${year}`
-
     if (!opts?.force) {
       const cached = cacheGet<BCPlatformData>(key)
       if (cached) { updateTab(id, { data: cached, loading: false }); return }
     }
-
     if (!opts?.background) updateTab(id, { loading: true, error: '' })
-
     try {
       const res = await fetch(`/api/reports/bc-platform?month=${month}&year=${year}`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -127,7 +207,6 @@ export default function BCPlatformPage() {
     }
   }, [updateTab, toast])
 
-  // ── Listen for prefetch event ──────────────────────────────────────
   useEffect(() => {
     const handler = (e: Event) => {
       const ev = e as CustomEvent<{ data: BCPlatformData; month: number; year: number }>
@@ -144,14 +223,12 @@ export default function BCPlatformPage() {
     return () => window.removeEventListener('prefetch:bc-platform', handler)
   }, [tabs, updateTab])
 
-  // Initial load for each tab
   useEffect(() => {
     tabs.forEach(t => {
       if (!t.data && !t.loading) fetchData(t.id, t.month, t.year)
     })
   }, []) // eslint-disable-line
 
-  // Realtime refresh
   useRealtimeRefresh(() => {
     if (activeTab) fetchData(activeTab.id, activeTab.month, activeTab.year, { force: true, background: true })
   })
@@ -190,200 +267,428 @@ export default function BCPlatformPage() {
     setTimeout(() => dismiss(tid), 2000)
   }
 
-  // ── Months dropdown ────────────────────────────────────────────────
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
   const yearOptions  = [now.getFullYear() - 1, now.getFullYear()]
 
   // ── Render ─────────────────────────────────────────────────────────
   const d = activeTab?.data
-
+  const tq = d?.tongQuan
   const remaining = activeTab
     ? cacheRemainingSeconds(`bc-platform:${activeTab.month}:${activeTab.year}`)
     : 0
 
+  // Detect nếu uvTheoNgay có đủ cột (multi-column)
+  const hasDetailedDaily = d?.uvTheoNgay?.some(r => r.uvNet !== undefined || r.formNhap !== undefined)
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-gray-900">
+
       {/* ── Tab bar ── */}
-      <div className="flex items-center gap-1 px-3 pt-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-x-auto">
+      <div className="flex items-center gap-0.5 px-3 pt-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-x-auto shrink-0">
         {tabs.map(t => (
           <div
             key={t.id}
             onClick={() => setActiveTabId(t.id)}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-t text-sm cursor-pointer whitespace-nowrap border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-lg text-sm cursor-pointer whitespace-nowrap border-b-2 transition-all ${
               t.id === activeTabId
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-medium'
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400 font-semibold bg-blue-50/50 dark:bg-blue-900/20'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
             }`}
           >
-            <span>{t.month}/{t.year}</span>
-            {t.loading && <span className="animate-spin text-xs">⟳</span>}
+            <span>Tháng {t.month}/{t.year}</span>
+            {t.loading && <span className="animate-spin text-xs opacity-60">⟳</span>}
             {tabs.length > 1 && (
               <button
                 onClick={e => { e.stopPropagation(); closeTab(t.id) }}
-                className="ml-1 text-gray-400 hover:text-red-500 text-xs leading-none"
-              >×</button>
+                className="ml-0.5 text-gray-300 hover:text-red-400 text-xs"
+              >✕</button>
             )}
           </div>
         ))}
         <button
           onClick={addTab}
-          className="ml-1 px-2 py-1 text-gray-400 hover:text-blue-500 text-lg leading-none"
+          className="ml-1 px-2.5 py-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg text-lg transition-colors"
           title="Thêm tab"
         >+</button>
       </div>
 
-      {/* ── Controls ── */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 flex-wrap">
-        <select
-          value={activeTab?.month}
-          onChange={e => changeMonth(activeTab!.id, Number(e.target.value), activeTab!.year)}
-          className="text-sm border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 dark:text-white"
-        >
-          {monthOptions.map(m => <option key={m} value={m}>Tháng {m}</option>)}
-        </select>
-        <select
-          value={activeTab?.year}
-          onChange={e => changeMonth(activeTab!.id, activeTab!.month, Number(e.target.value))}
-          className="text-sm border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 dark:text-white"
-        >
-          {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-        <button
-          onClick={() => activeTab && refresh(activeTab.id)}
-          disabled={activeTab?.refreshing}
-          className="text-sm px-3 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
-        >
-          {activeTab?.refreshing ? '⟳ Đang làm mới...' : '⟳ Làm mới'}
-        </button>
-        {remaining > 0 && (
-          <span className="text-xs text-gray-400">
-            Cache còn {Math.ceil(remaining / 60)} phút
-          </span>
-        )}
-        {d?.updatedAt && (
-          <span className="text-xs text-gray-400 ml-auto">
-            Cập nhật: {d.updatedAt}
-          </span>
-        )}
+      {/* ── Header / Controls ── */}
+      <div className="shrink-0 px-5 py-3 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-slate-800 dark:text-white">
+              📊 BC Platform — Tháng {activeTab?.month}/{activeTab?.year}
+            </h1>
+            {d?.updatedAt && (
+              <p className="text-xs text-slate-400 mt-0.5">Cập nhật: {d.updatedAt}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={activeTab?.month}
+              onChange={e => changeMonth(activeTab!.id, Number(e.target.value), activeTab!.year)}
+              className="text-sm border border-slate-200 dark:border-gray-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-700 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              {monthOptions.map(m => <option key={m} value={m}>Tháng {m}</option>)}
+            </select>
+            <select
+              value={activeTab?.year}
+              onChange={e => changeMonth(activeTab!.id, activeTab!.month, Number(e.target.value))}
+              className="text-sm border border-slate-200 dark:border-gray-600 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-700 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <button
+              onClick={() => activeTab && refresh(activeTab.id)}
+              disabled={activeTab?.refreshing}
+              className="text-sm px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm disabled:opacity-50 transition-colors flex items-center gap-1.5"
+            >
+              <span className={activeTab?.refreshing ? 'animate-spin inline-block' : ''}>⟳</span>
+              {activeTab?.refreshing ? 'Đang làm mới...' : 'Làm mới'}
+            </button>
+            {remaining > 0 && (
+              <span className="text-xs text-slate-400 bg-slate-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                Cache {Math.ceil(remaining / 60)} phút
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ── Body ── */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+
+        {/* Loading */}
         {activeTab?.loading && (
-          <div className="flex justify-center items-center h-40 text-gray-400">
-            <span className="animate-spin text-2xl mr-2">⟳</span> Đang tải...
+          <div className="flex justify-center items-center h-48">
+            <div className="text-center text-slate-400">
+              <div className="text-4xl animate-spin mb-3">⟳</div>
+              <p className="text-sm">Đang tải dữ liệu...</p>
+            </div>
           </div>
         )}
 
+        {/* Error */}
         {activeTab?.error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-600 dark:text-red-400 text-sm">
-            Lỗi: {activeTab.error}
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm flex items-start gap-2">
+            <span className="text-lg">⚠️</span>
+            <div>
+              <p className="font-semibold">Lỗi tải dữ liệu</p>
+              <p className="opacity-80 mt-0.5">{activeTab.error}</p>
+            </div>
           </div>
         )}
 
+        {/* Empty */}
         {d?.empty && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-yellow-700 dark:text-yellow-400 text-sm">
-            {d.message ?? `Chưa có dữ liệu tháng ${d.month}/${d.year}`}
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 text-amber-700 dark:text-amber-400 text-sm flex items-center gap-2">
+            <span className="text-lg">📭</span>
+            <p>{d.message ?? `Chưa có dữ liệu tháng ${d.month}/${d.year}`}</p>
           </div>
         )}
 
-        {d && !d.empty && d.tongQuan && (
+        {d && !d.empty && tq && (
           <>
-            {/* KPI Cards */}
+            {/* ══ BẢNG 1: KPI Tổng Quan ══ */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <KpiCard label="Tổng Form Nhập" value={(d.tongQuan.tongFormNhap ?? 0).toLocaleString()} />
-              <KpiCard label="UV Net" value={(d.tongQuan.uvNet ?? 0).toLocaleString()} />
-              <KpiCard label="UV Trùng" value={(d.tongQuan.uvTrung ?? 0).toLocaleString()} />
-              <KpiCard label="Tỷ Lệ Trùng" value={d.tongQuan.tyLeTrung ?? '0%'} />
+              <KpiCard
+                label="Tổng Form Nhập"
+                value={(tq.tongFormNhap ?? 0).toLocaleString()}
+                gradient="from-blue-500 to-blue-700"
+                icon="📝"
+              />
+              <KpiCard
+                label="UV Net"
+                value={(tq.uvNet ?? 0).toLocaleString()}
+                gradient="from-emerald-500 to-emerald-700"
+                icon="✅"
+              />
+              <KpiCard
+                label="UV Trùng (bị loại)"
+                value={(tq.uvTrung ?? 0).toLocaleString()}
+                sub={`${tq.tyLeTrung} tỷ lệ trùng`}
+                gradient="from-rose-500 to-rose-700"
+                icon="❌"
+              />
+              <KpiCard
+                label="Tỷ Lệ Trùng"
+                value={tq.tyLeTrung ?? '0%'}
+                gradient="from-violet-500 to-violet-700"
+                icon="📊"
+              />
             </div>
 
-            {/* Phân loại trạng thái */}
+            {/* ══ Phân Loại Trạng Thái ══ */}
             {d.phanLoaiTrangThai && d.phanLoaiTrangThai.length > 0 && (
-              <Section title="Phân loại trạng thái">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
-                      <th className="pb-2 font-medium">Trạng thái</th>
-                      <th className="pb-2 font-medium text-right">Số lượng</th>
-                      <th className="pb-2 font-medium text-right">Tỷ lệ</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <Section
+                title={`Phân Loại Trạng Thái — UV Net (${tq.uvNet} UV)`}
+                icon="🏷️"
+              >
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                  {d.phanLoaiTrangThai.map((row, i) => {
+                    const colorCfg = STATUS_COLORS[row.label] ?? STATUS_COLORS_DEFAULT[i % STATUS_COLORS_DEFAULT.length]
+                    return (
+                      <StatusCard
+                        key={i}
+                        label={row.label}
+                        value={row.soLuong}
+                        gradient={colorCfg.bg}
+                        textColor={colorCfg.text}
+                        icon={colorCfg.icon}
+                        totalUVNet={tq.uvNet ?? 0}
+                      />
+                    )
+                  })}
+                </div>
+                {/* Progress bar tổng */}
+                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-gray-700">
+                  <div className="flex gap-3 flex-wrap">
                     {d.phanLoaiTrangThai.map((row, i) => {
-                      const total = d.phanLoaiTrangThai!.reduce((s, r) => s + r.soLuong, 0)
-                      const pct = total > 0 ? ((row.soLuong / total) * 100).toFixed(1) : '0'
+                      const colorCfg = STATUS_COLORS[row.label] ?? STATUS_COLORS_DEFAULT[i % STATUS_COLORS_DEFAULT.length]
+                      const pct = tq.uvNet > 0 ? (row.soLuong / tq.uvNet) * 100 : 0
+                      // Lấy màu đầu tiên từ gradient string
+                      const tailwindBg = colorCfg.bg.split(' ')[0].replace('from-', 'bg-').replace('to-', 'bg-')
                       return (
-                        <tr key={i} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                          <td className="py-1.5 text-gray-700 dark:text-gray-300">{row.label}</td>
-                          <td className="py-1.5 text-right font-medium">{row.soLuong.toLocaleString()}</td>
-                          <td className="py-1.5 text-right text-gray-500">{pct}%</td>
-                        </tr>
+                        <div key={i} className="flex items-center gap-1.5 text-xs text-slate-500">
+                          <div className={`w-2.5 h-2.5 rounded-full bg-gradient-to-br ${colorCfg.bg}`} />
+                          <span>{row.label}: <strong>{row.soLuong}</strong> ({pct.toFixed(1)}%)</span>
+                        </div>
                       )
                     })}
-                  </tbody>
-                  <tfoot>
-                    <tr className="font-semibold text-gray-800 dark:text-gray-200">
-                      <td className="pt-2">Tổng</td>
-                      <td className="pt-2 text-right">
-                        {d.phanLoaiTrangThai.reduce((s, r) => s + r.soLuong, 0).toLocaleString()}
-                      </td>
-                      <td className="pt-2 text-right">100%</td>
-                    </tr>
-                  </tfoot>
-                </table>
+                  </div>
+                </div>
               </Section>
             )}
 
-            {/* UV theo ngày */}
+            {/* ══ BẢNG 2: UV Theo Ngày ══ */}
             {d.uvTheoNgay && d.uvTheoNgay.length > 0 && (
-              <Section title={`UV theo ngày — Tháng ${d.month}/${d.year}`}>
-                {/* Mini bar chart */}
-                <div className="mb-4">
-                  {(() => {
-                    const max = Math.max(...d.uvTheoNgay!.map(r => r.soLuong), 1)
-                    return (
-                      <div className="flex items-end gap-0.5 h-24 overflow-x-auto">
-                        {d.uvTheoNgay!.map((row, i) => (
-                          <div key={i} className="flex flex-col items-center min-w-[18px] group relative">
-                            <div
-                              className="w-full bg-blue-400 dark:bg-blue-500 rounded-t hover:bg-blue-500 transition-colors"
-                              style={{ height: `${(row.soLuong / max) * 80}px` }}
-                              title={`${row.ngay}: ${row.soLuong}`}
-                            />
-                            {/* Tooltip */}
-                            <div className="absolute bottom-full mb-1 bg-gray-800 text-white text-xs rounded px-1.5 py-0.5 opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10">
-                              {row.ngay}: {row.soLuong}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  })()}
-                </div>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
-                      <th className="pb-2 font-medium">Ngày</th>
-                      <th className="pb-2 font-medium text-right">UV</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.uvTheoNgay.map((row, i) => (
-                      <tr key={i} className="border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                        <td className="py-1 text-gray-700 dark:text-gray-300">{row.ngay}</td>
-                        <td className="py-1 text-right font-medium">{row.soLuong.toLocaleString()}</td>
+              <Section
+                title={`Bảng 2 — Chỉ số UV từng ngày`}
+                subtitle={`Tháng ${d.month}/${d.year}`}
+                icon="📅"
+              >
+                <div className="overflow-x-auto -mx-1">
+                  <table className="w-full text-sm min-w-[600px]">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs">
+                        <th className="py-2.5 px-3 text-left font-semibold rounded-tl-lg whitespace-nowrap">Ngày</th>
+                        {hasDetailedDaily && (
+                          <th className="py-2.5 px-3 text-center font-semibold whitespace-nowrap">Thứ</th>
+                        )}
+                        {hasDetailedDaily && (
+                          <th className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">Form Nhập</th>
+                        )}
+                        <th className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">UV Net</th>
+                        {hasDetailedDaily && (
+                          <>
+                            <th className="py-2.5 px-3 text-right font-semibold whitespace-nowrap text-red-200">Trùng</th>
+                            <th className="py-2.5 px-3 text-right font-semibold whitespace-nowrap text-red-200">% Trùng</th>
+                            <th className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">Mở App</th>
+                            <th className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">Nộp HS</th>
+                            <th className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">Loại</th>
+                            <th className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">Tái Tuyển</th>
+                            <th className="py-2.5 px-3 text-right font-semibold whitespace-nowrap">TXCT</th>
+                            <th className="py-2.5 px-3 text-right font-semibold whitespace-nowrap rounded-tr-lg">Trống TT</th>
+                          </>
+                        )}
+                        {!hasDetailedDaily && (
+                          <th className="py-2.5 px-3 text-right font-semibold rounded-tr-lg whitespace-nowrap">UV</th>
+                        )}
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="font-semibold text-gray-800 dark:text-gray-200">
-                      <td className="pt-2">Tổng</td>
-                      <td className="pt-2 text-right">
-                        {d.uvTheoNgay.reduce((s, r) => s + r.soLuong, 0).toLocaleString()}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+                    </thead>
+                    <tbody>
+                      {d.uvTheoNgay.map((row, i) => {
+                        const uvVal = row.uvNet ?? row.soLuong ?? 0
+                        const isOdd = i % 2 === 0
+                        return (
+                          <tr
+                            key={i}
+                            className={`border-b border-slate-100 dark:border-gray-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/20 transition-colors ${
+                              isOdd ? 'bg-white dark:bg-gray-800' : 'bg-slate-50/60 dark:bg-gray-800/60'
+                            }`}
+                          >
+                            <td className="py-2 px-3 text-slate-700 dark:text-gray-300 font-medium whitespace-nowrap">{row.ngay}</td>
+                            {hasDetailedDaily && (
+                              <td className="py-2 px-3 text-center text-slate-500 dark:text-gray-400 text-xs whitespace-nowrap">{row.thu ?? '—'}</td>
+                            )}
+                            {hasDetailedDaily && (
+                              <td className="py-2 px-3 text-right text-slate-600 dark:text-gray-300 whitespace-nowrap">
+                                {row.formNhap != null ? row.formNhap.toLocaleString() : '—'}
+                              </td>
+                            )}
+                            <td className="py-2 px-3 text-right font-semibold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                              {uvVal.toLocaleString()}
+                            </td>
+                            {hasDetailedDaily && (
+                              <>
+                                <td className="py-2 px-3 text-right text-rose-500 dark:text-rose-400 whitespace-nowrap">
+                                  {row.trung != null ? row.trung : '—'}
+                                </td>
+                                <td className="py-2 px-3 text-right text-rose-400 dark:text-rose-300 text-xs whitespace-nowrap">
+                                  {row.pctTrung ?? '—'}
+                                </td>
+                                <td className="py-2 px-3 text-right text-slate-500 whitespace-nowrap">
+                                  {row.moApp != null && row.moApp !== '' ? row.moApp : <span className="text-slate-300">—</span>}
+                                </td>
+                                <td className="py-2 px-3 text-right text-slate-500 whitespace-nowrap">
+                                  {row.nopHS != null && row.nopHS !== '' ? row.nopHS : <span className="text-slate-300">—</span>}
+                                </td>
+                                <td className="py-2 px-3 text-right text-slate-500 whitespace-nowrap">
+                                  {row.loai != null && row.loai !== '' ? row.loai : <span className="text-slate-300">—</span>}
+                                </td>
+                                <td className="py-2 px-3 text-right text-slate-500 whitespace-nowrap">
+                                  {row.taiTuyen != null && row.taiTuyen !== '' ? row.taiTuyen : <span className="text-slate-300">—</span>}
+                                </td>
+                                <td className="py-2 px-3 text-right text-slate-500 whitespace-nowrap">
+                                  {row.txct != null && row.txct !== '' ? row.txct : <span className="text-slate-300">—</span>}
+                                </td>
+                                <td className="py-2 px-3 text-right text-purple-500 dark:text-purple-400 whitespace-nowrap">
+                                  {row.trongTT != null && row.trongTT !== '' ? row.trongTT : <span className="text-slate-300">—</span>}
+                                </td>
+                              </>
+                            )}
+                            {!hasDetailedDaily && (
+                              <td className="py-2 px-3 text-right font-medium text-slate-700 dark:text-gray-300 whitespace-nowrap">
+                                {uvVal.toLocaleString()}
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-blue-50 dark:bg-blue-900/30 border-t-2 border-blue-200 dark:border-blue-700 font-bold text-blue-700 dark:text-blue-300">
+                        <td className="py-2.5 px-3 text-sm" colSpan={hasDetailedDaily ? 3 : 1}>TỔNG</td>
+                        <td className="py-2.5 px-3 text-right text-base">
+                          {d.uvTheoNgay
+                            .reduce((s, r) => s + (r.uvNet ?? r.soLuong ?? 0), 0)
+                            .toLocaleString()}
+                        </td>
+                        {hasDetailedDaily && (
+                          <>
+                            <td className="py-2.5 px-3 text-right text-rose-600">
+                              {d.uvTheoNgay.reduce((s, r) => s + (r.trung ?? 0), 0)}
+                            </td>
+                            <td className="py-2.5 px-3 text-right text-xs text-slate-400">
+                              {tq.tyLeTrung}
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              {d.uvTheoNgay.reduce((s, r) => s + (Number(r.moApp) || 0), 0) || '—'}
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              {d.uvTheoNgay.reduce((s, r) => s + (Number(r.nopHS) || 0), 0) || '—'}
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              {d.uvTheoNgay.reduce((s, r) => s + (Number(r.loai) || 0), 0) || '—'}
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              {d.uvTheoNgay.reduce((s, r) => s + (Number(r.taiTuyen) || 0), 0) || '—'}
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              {d.uvTheoNgay.reduce((s, r) => s + (Number(r.txct) || 0), 0) || '—'}
+                            </td>
+                            <td className="py-2.5 px-3 text-right text-purple-600">
+                              {d.uvTheoNgay.reduce((s, r) => s + (Number(r.trongTT) || 0), 0) || '—'}
+                            </td>
+                          </>
+                        )}
+                        {!hasDetailedDaily && (
+                          <td className="py-2.5 px-3 text-right">
+                            {d.uvTheoNgay.reduce((s, r) => s + (r.soLuong ?? 0), 0).toLocaleString()}
+                          </td>
+                        )}
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </Section>
+            )}
+
+            {/* ══ BẢNG 3: Thị Trường ══ */}
+            {d.thiTruong && d.thiTruong.length > 0 && (
+              <Section
+                title="Bảng 3 — Thị Trường (UV Net theo khu vực)"
+                icon="🗺️"
+              >
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-slate-600 to-slate-700 text-white text-xs">
+                        <th className="py-2.5 px-4 text-left font-semibold rounded-tl-lg">Thị Trường</th>
+                        <th className="py-2.5 px-4 text-right font-semibold">Số UV</th>
+                        <th className="py-2.5 px-4 text-right font-semibold rounded-tr-lg">Tỷ lệ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {d.thiTruong.map((row, i) => {
+                        const total = d.thiTruong!.reduce((s, r) => s + r.soUV, 0)
+                        const pct = total > 0 ? ((row.soUV / total) * 100).toFixed(1) : '0'
+                        const barW = total > 0 ? (row.soUV / total) * 100 : 0
+                        return (
+                          <tr
+                            key={i}
+                            className={`border-b border-slate-100 dark:border-gray-700 hover:bg-slate-50/60 dark:hover:bg-gray-700/30 transition-colors ${
+                              i % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-slate-50/50 dark:bg-gray-800/60'
+                            }`}
+                          >
+                            <td className="py-2.5 px-4 text-slate-700 dark:text-gray-300 font-medium">
+                              {row.thiTruong}
+                            </td>
+                            <td className="py-2.5 px-4 text-right font-semibold text-slate-800 dark:text-gray-200">
+                              {row.soUV.toLocaleString()}
+                            </td>
+                            <td className="py-2.5 px-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <div className="w-16 bg-slate-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className="bg-blue-500 h-1.5 rounded-full"
+                                    style={{ width: `${barW}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs text-slate-500 w-10 text-right">{pct}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-blue-50 dark:bg-blue-900/30 border-t-2 border-blue-200 dark:border-blue-700 font-bold text-blue-700 dark:text-blue-300">
+                        <td className="py-2.5 px-4">
+                          Tổng số thị trường: {d.thiTruong.length}
+                        </td>
+                        <td className="py-2.5 px-4 text-right text-base">
+                          {d.thiTruong.reduce((s, r) => s + r.soUV, 0).toLocaleString()}
+                        </td>
+                        <td className="py-2.5 px-4 text-right text-sm">100%</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </Section>
+            )}
+
+            {/* Fallback nếu không có thiTruong nhưng có phanLoaiTrangThai (tóm tắt) */}
+            {!d.thiTruong && d.phanLoaiTrangThai && (
+              <Section title="Tóm tắt tổng quan" icon="📋">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                  <div className="text-center p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20">
+                    <p className="text-2xl font-bold text-blue-600">{tq.tongFormNhap?.toLocaleString()}</p>
+                    <p className="text-xs text-slate-500 mt-1">Tổng Form Nhập</p>
+                  </div>
+                  <div className="text-center p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20">
+                    <p className="text-2xl font-bold text-emerald-600">{tq.uvNet?.toLocaleString()}</p>
+                    <p className="text-xs text-slate-500 mt-1">UV Net (Hợp lệ)</p>
+                  </div>
+                  <div className="text-center p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20">
+                    <p className="text-2xl font-bold text-rose-600">{tq.uvTrung?.toLocaleString()}</p>
+                    <p className="text-xs text-slate-500 mt-1">UV Trùng</p>
+                  </div>
+                  <div className="text-center p-3 rounded-xl bg-violet-50 dark:bg-violet-900/20">
+                    <p className="text-2xl font-bold text-violet-600">{tq.tyLeTrung}</p>
+                    <p className="text-xs text-slate-500 mt-1">Tỷ Lệ Trùng</p>
+                  </div>
+                </div>
               </Section>
             )}
           </>
