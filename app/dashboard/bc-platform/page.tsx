@@ -200,7 +200,7 @@ export default function BCPlatformPage() {
       const stale = cacheGetStale<BCPlatformData>(key)
       if (stale) {
         updateTab(id, { data: stale, loading: false, refreshing: false })
-        toast('Dùng dữ liệu cũ do lỗi mạng', 'warning')
+        toast('info', 'Dùng dữ liệu cũ do lỗi mạng')
       } else {
         updateTab(id, { error: e.message, loading: false, refreshing: false })
       }
@@ -263,7 +263,7 @@ export default function BCPlatformPage() {
     cacheClear(`bc-platform:${activeTab.month}:${activeTab.year}`)
     updateTab(id, { refreshing: true })
     fetchData(id, activeTab.month, activeTab.year, { force: true })
-    const tid = toast('Đang làm mới...', 'info')
+    const tid = toast('info', 'Đang làm mới...')
     setTimeout(() => dismiss(tid), 2000)
   }
 
