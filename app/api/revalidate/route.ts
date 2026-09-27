@@ -1,10 +1,10 @@
-// POST /api/revalidate?tag=bc-ngay|bc-thang|bc-tong
+// POST /api/revalidate?tag=bc-ngay|bc-thang|bc-tong|bc-platform
 // Xoá cache của một BC, buộc lần tải sau gọi GAS mới
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySession } from '@/lib/auth'
-import { clearCacheBcNgay, clearCacheBcThang, clearCacheBcTong } from '@/lib/sheets'
+import { clearCacheBcNgay, clearCacheBcThang, clearCacheBcTong, clearCacheBcPlatform } from '@/lib/sheets'
 
-const ALLOWED = ['bc-ngay', 'bc-thang', 'bc-tong'] as const
+const ALLOWED = ['bc-ngay', 'bc-thang', 'bc-tong', 'bc-platform'] as const
 type Tag = typeof ALLOWED[number]
 
 export async function POST(req: NextRequest) {
@@ -16,9 +16,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'tag không hợp lệ' }, { status: 400 })
   }
 
-  if (tag === 'bc-ngay')   clearCacheBcNgay()
-  if (tag === 'bc-thang')  clearCacheBcThang()
-  if (tag === 'bc-tong')   clearCacheBcTong()
+  if (tag === 'bc-ngay')     clearCacheBcNgay()
+  if (tag === 'bc-thang')    clearCacheBcThang()
+  if (tag === 'bc-tong')     clearCacheBcTong()
+  if (tag === 'bc-platform') clearCacheBcPlatform()
 
   return NextResponse.json({ ok: true, cleared: tag })
 }
