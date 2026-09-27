@@ -769,6 +769,7 @@ function MonthCompareTable({ items }: { items: MonthCompareItem[] }) {
                   </td>
                 )
               })}
+            </tr>
             {/* Hàng Duyệt */}
             <tr>
               <td className="py-3 px-4 text-xs font-bold uppercase tracking-wide border border-slate-100"
