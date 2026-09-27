@@ -57,7 +57,7 @@ export default function BCPlatformPage() {
     const key = `bc-platform:${m}:${y}`
     if (!force) {
       const cached = cacheGet(key)
-      if (cached) { setData(cached); return }
+      if (cached) { setData(cached as BCPlatformData); return }
     }
     setLoading(true)
     setError(null)
