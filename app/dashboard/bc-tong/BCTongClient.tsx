@@ -419,7 +419,7 @@ export default function BCTongClient() {
           <Section title={`Bảng 1 — Tổng quan chuyển đổi T${String(month).padStart(2,'0')}/${year} (Đã Lọc)`} badge="Đã Lọc" badgeColor="green">
             {!cleanTq && (
               <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
-                ⚠️ GAS chưa trả dữ liệu đã lọc — cần cập nhật hàm <code>doGet</code> trong Apps Script để trả <code>cleanTongQuan</code>
+                ⚠️ GAS chưa trả dữ liệu ă� lọc — cẩn cập nhật hàm <code>doGet</code> trong Apps Script để trả <code>cleanTongQuan</code>
               </p>
             )}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -440,7 +440,7 @@ export default function BCTongClient() {
                     ) : (
                       <p className="text-xs text-slate-400 mb-2">UV trong T{month}/{year}</p>
                     )}
-                    {/* Bảng tháng nhập theo nhóm */}
+                    {/* Bẽng tháng nhập theo nhôm */}
                     <MonthBreakdown rows={grp?.byMonthNhap ?? []} />
                   </div>
                 )
@@ -448,11 +448,11 @@ export default function BCTongClient() {
             </div>
           </Section>
 
-          {/* ── Bảng 2: So sánh KÝ HĐ & DUYỆT 4 tháng (Đã Lọc) ──── */}
+          {/* Bảng 2: So sánh Ký HĐ & DUYỆT 4 tháng (Đã Lọc) ──── */}
           <Section title="Bảng 2 — So sánh Ký HĐ & Duyệt 4 tháng gần nhất (Đã Lọc)" badge="Đã Lọc" badgeColor="green">
             {data?.cleanMonthCompare && data.cleanMonthCompare.length > 0
               ? <MonthCompareTable items={data.cleanMonthCompare} />
-              : <p className="text-xs text-slate-400 py-2">Chưa có dữ liệu so sánh (cần GAS v1.38+)</p>
+              : <p className="text-xs text-slate-400 py-2">Chưa có dữ liệu so sánh (cẩn GAS v1.38+)</p>
             }
           </Section>
         </>
@@ -477,7 +477,7 @@ export default function BCTongClient() {
           ══════════════════════════════════════════════════════════ */}
       {hasData && (
         <>
-          {/* ── Bảng 3: Tổng quan 4 nhóm (Gốc) ──────────────────────── */}
+          {/* ── Bảng 3: Tổn       {/* ── Bảng 3: Tổng quan 4 nhóm (Gốc) ──────────────────────── */}
           <Section title={`Bảng 3 — Tổng quan T${String(month).padStart(2,'0')}/${year} (Gốc)`} badge="Gốc" badgeColor="slate">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {GROUPS.map(g => {
@@ -520,7 +520,7 @@ export default function BCTongClient() {
           </Section>
 
           {/* ── Bảng 6: So sánh KÝ HĐ & DUYỆT 4 tháng (Gốc) ──────────── */}
-          <Section title="Bảng 6 — So sánh Ký HĐ & Duyệt 4 tháng gần nhất (Gốc)" badge="Gốc" badgeColor="slate">
+          <Section title="Bảng 6 — So sánh Ký HĐ & Duyệt 4 tháng gần nhấZ (Gốc)" badge="Gốc" badgeColor="slate">
             {data?.monthCompare && data.monthCompare.length > 0
               ? <MonthCompareTable items={data.monthCompare} />
               : <p className="text-xs text-slate-400 py-2">Chưa có dữ liệu so sánh (cần GAS v1.38+)</p>
@@ -709,7 +709,7 @@ function MonthTable({ data }: { data: BCTongData }) {
 }
 
 /**
- * Bảng so sánh KÝ HĐ & DUYỆT theo 4 tháng gần nhất — layout Pivot (tháng làm cột)
+ * Bảng so sánh Ký HĐ & DUYỆT theo 4 tháng gần nhất — layout Pivot (tháng làm cột)
  * - Hàng: Ký HĐ / Duyệt (bỏ Chênh lệch)
  * - Cột: từng tháng, sắp xếp tăng dần
  * - Tháng gần nhất: header nền xanh (#3b82f6) chữ trắng, ô dữ liệu nền xanh nhạt
@@ -769,7 +769,6 @@ function MonthCompareTable({ items }: { items: MonthCompareItem[] }) {
                   </td>
                 )
               })}
-            </tr>
             {/* Hàng Duyệt */}
             <tr>
               <td className="py-3 px-4 text-xs font-bold uppercase tracking-wide border border-slate-100"
@@ -793,6 +792,7 @@ function MonthCompareTable({ items }: { items: MonthCompareItem[] }) {
             </tr>
           </tbody>
         </table>
+         </table>
       </div>
 
     </div>
