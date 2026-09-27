@@ -180,7 +180,8 @@ export default function BCTongPage() {
   }, [updateTab])
 
   // ── SWR: cache còn hạn → dùng ngay; stale → show + refetch ngầm ──
-  const fetchData = useCallback(async (m: number, y: number, tabId: string, skipCache = false) => {
+  // silent=true: không set loading:true → button vẫn bấm được ngay lập tức
+  const fetchData = useCallback(async (m: number, y: number, tabId: string, skipCache = false, silent = false) => {
     if (!skipCache) {
       const fresh = cacheGet<BCTongData>(`bc-tong:${m}:${y}`)
       if (fresh) {
@@ -199,18 +200,22 @@ export default function BCTongPage() {
         return
       }
     }
-    updateTab(tabId, { loading: true, error: '', data: null })
-    const loadingId = toast('loading', `Đang tải T${m}/${y}...`)
+    if (silent) {
+      updateTab(tabId, { refreshing: true, error: '' })
+    } else {
+      updateTab(tabId, { loading: true, error: '', data: null })
+    }
+    const loadingId = silent ? null : toast('loading', `Đang tải T${m}/${y}...`)
     try {
       const d = await _fetchFromServer(m, y, tabId)
-      dismiss(loadingId)
-      toast('success', `Tải xong T${m}/${y}`, `Cập nhật: ${d.updatedAt ?? 'vừa xong'}`)
+      if (loadingId) dismiss(loadingId)
+      if (!silent) toast('success', `Tải xong T${m}/${y}`, `Cập nhật: ${d.updatedAt ?? 'vừa xong'}`)
     } catch (e: any) {
       updateTab(tabId, { error: e.message })
-      dismiss(loadingId)
-      toast('error', 'Lỗi tải dữ liệu', e.message)
+      if (loadingId) dismiss(loadingId)
+      if (!silent) toast('error', 'Lỗi tải dữ liệu', e.message)
     } finally {
-      updateTab(tabId, { loading: false })
+      updateTab(tabId, { loading: false, refreshing: false })
     }
   }, [updateTab, toast, dismiss, _fetchFromServer])
 
@@ -241,10 +246,24 @@ export default function BCTongPage() {
     if (maxId >= nextId.current) nextId.current = maxId + 1
   }, [])
 
-  // Tải lần đầu
+  // Lắng nghe PrefetchReports — khi pre-fetch bc-tong xong, cập nhật tab ngay
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { data, month: m, year: y } = (e as CustomEvent).detail
+      setTabs(prev => prev.map(t =>
+        t.month === m && t.year === y && !t.data
+          ? { ...t, data, loading: false, refreshing: false, error: '' }
+          : t
+      ))
+    }
+    window.addEventListener('prefetch:bc-tong', handler)
+    return () => window.removeEventListener('prefetch:bc-tong', handler)
+  }, [])
+
+  // Tải lần đầu (silent=true: không block button)
   useEffect(() => {
     const first = tabs[0]
-    if (!first.data && !first.loading) fetchData(first.month, first.year, first.id)
+    if (!first.data && !first.loading) fetchData(first.month, first.year, first.id, false, true)
   }, [])
 
   // Deep link — đọc ?month=&year= từ URL
