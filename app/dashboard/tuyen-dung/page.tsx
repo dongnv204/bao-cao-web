@@ -553,10 +553,10 @@ export default function TuyenDungPage() {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-3">
                     <KpiProgress label="Form Nhập"   val={b1.formNhapNgay ?? b2.tho.formNhap} target={b1.targetFormNgay ?? b2.tho.targetFormNgay} bg="bg-[#e65100]" />
-                    <KpiProgress label="UV Lọc"      val={b1.uvLocThang ?? b1.formNhapThang}    target={b1.targetUvLocThang ?? b1.targetFormThang}   bg="bg-[#212121]" />
-                    <KpiProgress label="UV Net"      val={b1.uvNetThang}                        target={b1.targetUvNetThang}                         bg="bg-[#00695c]" />
-                    <KpiProgress label="HL Net"      val={b1.hlNetThang}                        target={b1.targetHlNetThang}                         bg="bg-[#f9a825]" />
-                    <KpiProgress label="Trùng Net"   val={b1.trungNetThang}                     target={b1.targetTrungThang}                         bg="bg-[#4a148c]" />
+                    <KpiProgress label="UV Lọc"      val={b1.uvLocThang ?? b1.formNhapThang}    target={(b2.tho.targetFormNgay ?? 0) * data.day} bg="bg-[#212121]" />
+                    <KpiProgress label="UV Net"      val={b1.uvNetThang}                        target={(b2.net.targetUvNetNgay ?? 0) * data.day} bg="bg-[#00695c]" />
+                    <KpiProgress label="HL Net"      val={b1.hlNetThang}                        target={(b2.net.targetHlNetNgay ?? 0) * data.day} bg="bg-[#f9a825]" />
+                    <KpiProgress label="Trùng Net"   val={b1.trungNetThang}                     target={(b2.net.targetTrungNgay ?? 0) * data.day} bg="bg-[#4a148c]" />
                     <div className="grid grid-cols-2 gap-2">
                       <KpiSingle label="HL Thô"    val={b1.hlThoThang ?? b2.tho.hlTho}    bg="bg-blue-700" />
                       <KpiSingle label="Trùng Thô" val={b1.trungThoThang ?? b2.tho.trungTho} bg="bg-blue-900" />
@@ -599,7 +599,7 @@ export default function TuyenDungPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <KpiProgress label="Form Nhập" val={b2.tho.formNhap} target={b2.tho.targetFormNgay} bg="bg-[#e65100]" />
                     <KpiProgress label="UV Lọc"    val={b2.tho.uvLoc}    target={b2.tho.targetFormNgay} bg="bg-[#212121]" />
-                    <KpiSingle   label="Chưa Check" val={num(b2.tho.chuaCheck ?? b1.chuaCheckThang)} sub="SĐT chưa xác thực" bg="bg-slate-500" />
+                    <KpiSingle   label="Chưa Check" val={num(b2.tho.chuaCheck ?? b3.find(r => r.isSelected)?.chuaCheck ?? 0)} sub="SĐT chưa xác thực" bg="bg-slate-500" />
                     <KpiSingle   label="HL Thô"    val={`${b2.tho.hlTho} (${fmtPct(b2.tho.pctHlTho)})`} sub="/ UV Lọc" bg="bg-green-700" />
                     <KpiSingle   label="Trùng Thô" val={`${b2.tho.trungTho} (${fmtPct(b2.tho.pctTrungTho)})`} sub="/ UV Lọc" bg="bg-red-700" />
                   </div>
@@ -691,7 +691,7 @@ export default function TuyenDungPage() {
           <section>
             <SectionTitle color="bg-blue-800" text={`BẢNG 3 — CHỈ SỐ UV CÁC NGÀY TRONG THÁNG ${mY}`} />
             <div className="border border-slate-200 rounded-b-xl bg-white shadow-sm overflow-hidden">
-              <div className="overflow-x-auto" style={{ maxWidth: '50%' }}>
+              <div className="overflow-x-auto" style={{ maxWidth: '100%' }}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-800 text-white text-xs">
@@ -747,7 +747,7 @@ export default function TuyenDungPage() {
                         <Td>—</Td>
                         <Td right>{num(bang3Total.formNhap)}</Td>
                         <Td right>{num(bang3Total.uvLoc)}</Td>
-                        <Td right>{fmtPct(bang3Total.pctHaoHut)}</Td>
+                        <Td right>{fmtPct(bang3Total.pctHaoHut ?? (bang3Total.formNhap > 0 ? (bang3Total.formNhap - bang3Total.uvNet) / bang3Total.formNhap * 100 : null))}</Td>
                         <Td right>{num(bang3Total.uvNet)}</Td>
                         <Td right className="text-yellow-300">{num(bang3Total.hlNet)}</Td>
                         <Td right className="text-purple-300">{num(bang3Total.trungNet)}</Td>
