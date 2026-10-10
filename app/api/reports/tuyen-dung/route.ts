@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
 
   // [FIX 24/09/2026] Gi\u1ea3m timeout t\u1eeb 55s -> 10s.
   // Supabase fallback gi\u1edd d\u00f9ng cache (< 50ms), kh\u00f4ng c\u1ea7n ch\u1edd Apps Script l\u00e2u.
-  const TIMEOUT_MS = 10_000
+  const TIMEOUT_MS = 50_000
 
   try {
     const result = await Promise.race([
