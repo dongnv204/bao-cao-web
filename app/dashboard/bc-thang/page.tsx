@@ -83,7 +83,11 @@ export default function BCThangPage() {
       { label: 'Hợp lệ thô',      a: a.hopLeTho  ?? 0, b: b.hopLeTho  ?? 0 },
       { label: 'Trung thô',        a: a.trungTho  ?? 0, b: b.trungTho  ?? 0 },
       { label: 'UV Net',           a: a.tongUVNet ?? 0, b: b.tongUVNet ?? 0 },
-      { label: 'Tỷ lệ HL (%)',     a: a.hlNet     ?? 0, b: b.hlNet     ?? 0, isPercent: true },
+      // Tỷ lệ HL = HL Net / Tổng UV Net × 100 (trước đây truyền nhầm số lượng HL Net)
+      { label: 'Tỷ lệ HL (%)',
+        a: a.tongUVNet > 0 ? (a.hlNet / a.tongUVNet) * 100 : 0,
+        b: b.tongUVNet > 0 ? (b.hlNet / b.tongUVNet) * 100 : 0,
+        isPercent: true },
       { label: 'Trung Net',        a: a.trungNet  ?? 0, b: b.trungNet  ?? 0 },
       { label: 'Kết quả', a: null, b: null, isSeparator: true },
       { label: 'Ký HĐ',    a: a.kyHD    ?? 0, b: b.kyHD    ?? 0 },
@@ -327,7 +331,7 @@ export default function BCThangPage() {
       {tq && (
         <>
           {/* ── Bảng 1 — Tổng quan tháng ──────────────────────────── */}
-          <Section title="BẢNG 1 — TỔNG QUAN THÁNG">
+          <Section title="BẢNG 1 — TỔNG QUAN THÁNG (số riêng từng trạng thái)">
 
             {/* Hàng 1: KPI chính */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -339,7 +343,8 @@ export default function BCThangPage() {
 
             {/* Hàng 2: Lịch hẹn */}
             <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <KpiCard label="Chưa Check"    value={n(tq.chuaCheck)} sub={pct(tq.chuaCheck,tq.tongUVNet)+' / Net'}        bg="bg-slate-500" />
+              {/* Chưa Check không nằm trong UV Net → tính % trên Tổng UV Nhập */}
+              <KpiCard label="Chưa Check"    value={n(tq.chuaCheck)} sub={pct(tq.chuaCheck,tq.tongUVNhap)+' / Tổng nhập'} bg="bg-slate-500" />
               <KpiCard label="Chưa Có Lịch" value={n(tq.chuaCo)}    sub={pct(tq.chuaCo,tq.hlNet)+' / HL Net'}            bg="bg-orange-500" />
               <KpiCard label="Báo Lịch Sau" value={n(tq.baoLich)}   sub={pct(tq.baoLich,tq.hlNet)+' / HL Net'}           bg="bg-amber-500"  />
               <KpiCard label="Có Lịch PV"   value={n(tq.coLich)}    sub={pct(tq.coLich,tq.hlNet)+' / HL Net'}            bg="bg-teal-600"   />
@@ -404,7 +409,7 @@ export default function BCThangPage() {
           )}
 
           {data.pheu && data.pheu.length > 0 && (
-            <Section title="BẢNG 2 — TỔNG SỐ LƯỢNG QUA CÁC KHÂU & TỶ LỆ CHUYỂN ĐỔI (UV Hợp Lệ Net)">
+            <Section title="BẢNG 2 — TỔNG SỐ LƯỢNG QUA CÁC KHÂU & TỶ LỆ CHUYỂN ĐỔI (UV Hợp Lệ Net) — SỐ LŨY KẾ">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -581,10 +586,11 @@ export default function BCThangPage() {
                     ))}
                     <tr className="bg-blue-600 text-white font-bold text-sm">
                       <td className="py-2.5 px-3" colSpan={2}>TỔNG</td>
-                      <td className="py-2.5 px-3 text-right">{n(tq.hlNet+tq.trungNet+tq.chuaCheck)}</td>
-                      <td className="py-2.5 px-3 text-right">{n(tq.hlNet)}</td>
-                      <td className="py-2.5 px-3 text-right">{n(tq.trungNet)}</td>
-                      <td className="py-2.5 px-3 text-right">{n(tq.chuaCheck)}</td>
+                      {/* TỔNG = cộng các dòng thị trường (không lấy từ Bảng 1) để lệch số sẽ lộ ra thay vì bị che */}
+                      <td className="py-2.5 px-3 text-right">{n(data.byThiTruong.reduce((s, r) => s + r.uvNet, 0))}</td>
+                      <td className="py-2.5 px-3 text-right">{n(data.byThiTruong.reduce((s, r) => s + r.hlNet, 0))}</td>
+                      <td className="py-2.5 px-3 text-right">{n(data.byThiTruong.reduce((s, r) => s + r.trungNet, 0))}</td>
+                      <td className="py-2.5 px-3 text-right">{n(data.byThiTruong.reduce((s, r) => s + r.chuaCheck, 0))}</td>
                     </tr>
                   </tbody>
                 </table>
