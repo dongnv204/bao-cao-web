@@ -85,7 +85,7 @@ function progress(val: number, target: number) {
     pct: Math.min(pct, 100),
     pctStr: pct.toFixed(1) + '%',
     diff,
-    diffStr: diff < 0 ? `Thiếu ${diff}` : `+${diff}`,
+    diffStr: diff < 0 ? `Thiếu ${Math.abs(diff)}` : `+${diff}`,
     isShort: diff < 0,
   }
 }
@@ -552,7 +552,7 @@ export default function TuyenDungPage() {
                     HIỆN TẠI<br/>{`${String(data.day).padStart(2,'0')}/${mY}`}
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-3">
-                    <KpiProgress label="Form Nhập"   val={b1.formNhapNgay ?? b2.tho.formNhap} target={b1.targetFormNgay ?? b2.tho.targetFormNgay} bg="bg-[#e65100]" />
+                    <KpiProgress label="Form Nhập"   val={b1.formNhapThang} target={(b2.tho.targetFormNgay ?? 0) * data.day} bg="bg-[#e65100]" />
                     <KpiProgress label="UV Lọc"      val={b1.uvLocThang ?? b1.formNhapThang}    target={(b2.tho.targetFormNgay ?? 0) * data.day} bg="bg-[#212121]" />
                     <KpiProgress label="UV Net"      val={b1.uvNetThang}                        target={(b2.net.targetUvNetNgay ?? 0) * data.day} bg="bg-[#00695c]" />
                     <KpiProgress label="HL Net"      val={b1.hlNetThang}                        target={(b2.net.targetHlNetNgay ?? 0) * data.day} bg="bg-[#f9a825]" />
